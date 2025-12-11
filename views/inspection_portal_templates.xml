@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="public_inspection_view">
+        <t t-call="website.layout">
+            <div class="container mt-5 mb-5">
+                <div t-if="inspection.status == 'passed'" class="alert alert-success text-center">
+                    <h1>
+                        <i class="fa fa-check-circle"/>
+                        INSPECTION PASSED
+                    </h1>
+                </div>
+                <div t-if="inspection.status == 'failed'" class="alert alert-danger text-center">
+                    <h1>
+                        <i class="fa fa-times-circle"/>
+                        INSPECTION FAILED
+                    </h1>
+                </div>
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="card-title mb-0">Inspection Certificate:
+                            <span t-field="inspection.name"/>
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <strong>Machine:</strong>
+                                <span t-field="inspection.machine_id.name"/>
+                                <br/>
+                                <strong>Serial:</strong>
+                                <span t-field="inspection.machine_id.serial_number"/>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Expiry:</strong>
+                                <span t-field="inspection.expire_date" class="text-danger fw-bold"/>
+                            </div>
+                        </div>
+
+                        <h5>Checklist Results</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>No.</th>
+                                        <th>Item</th>
+                                        <th class="text-center">A</th>
+                                        <th class="text-center">R</th>
+                                        <th class="text-center">N/A</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="inspection.line_ids" t-as="line">
+                                        <td>
+                                            <span t-field="line.serial_no"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.name"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <i t-if="line.is_accepted" class="fa fa-check text-success"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <i t-if="line.is_rejected" class="fa fa-times text-danger"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <i t-if="line.is_na" class="fa fa-minus text-muted"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.comment"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_my_home_machine" name="Show Machines" inherit_id="portal.portal_my_home">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Machines</t>
+                <t t-set="url" t-value="'/my/machines'"/>
+                <t t-set="placeholder_count" t-value="'machine_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_breadcrumbs_machine" inherit_id="portal.portal_breadcrumbs">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'machine'" class="breadcrumb-item">
+                <a t-if="machine" t-attf-href="/my/machines">Machines</a>
+                <t t-else="">Machines</t>
+            </li>
+            <li t-if="machine" class="breadcrumb-item active">
+                <span t-field="machine.name"/>
+            </li>
+        </xpath>
+    </template>
+
+    <template id="portal_my_machines">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_table">
+                <thead>
+                    <tr>
+                        <th>Machine Name</th>
+                        <th>Serial Number</th>
+                        <th>Model</th>
+                        <th>Category</th>
+                        <th class="text-end">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="machines" t-as="machine">
+                        <td>
+                            <a t-attf-href="/my/machines/#{machine.id}">
+                                <span t-field="machine.name"/>
+                            </a>
+                        </td>
+                        <td>
+                            <span t-field="machine.serial_number"/>
+                        </td>
+                        <td>
+                            <span t-field="machine.model_no"/>
+                        </td>
+                        <td>
+                            <span t-field="machine.category_id.name"/>
+                        </td>
+                        <td class="text-end">
+                            <span class="badge text-bg-info">
+                                <t t-esc="len(machine.inspection_ids)"/>
+                                Inspections
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </t>
+        </t>
+    </template>
+
+    <template id="portal_my_machine_detail">
+        <t t-call="portal.portal_layout">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h3 class="my-0">Machine Details</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Name:</strong>
+                            <span t-field="machine.name"/>
+                            <br/>
+                            <strong>Serial:</strong>
+                            <span t-field="machine.serial_number"/>
+                            <br/>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Model:</strong>
+                            <span t-field="machine.model_no"/>
+                            <br/>
+                            <strong>Category:</strong>
+                            <span t-field="machine.category_id.name"/>
+                            <br/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Inspection History</h3>
+            <div class="table-responsive">
+                <table class="table table-hover bg-white">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ref</th>
+                            <th>Date</th>
+                            <th>Inspector</th>
+                            <th>Status</th>
+                            <th class="text-end" style="min-width: 200px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="machine.inspection_ids" t-as="insp">
+                            <td>
+                                <span t-field="insp.name"/>
+                            </td>
+                            <td>
+                                <span t-field="insp.start_date"/>
+                            </td>
+                            <td>
+                                <span t-field="insp.inspector_name"/>
+                            </td>
+                            <td>
+                                <span t-if="insp.status == 'passed'" class="badge text-bg-success">Passed</span>
+                                <span t-if="insp.status == 'failed'" class="badge text-bg-danger">Failed</span>
+                                <span t-if="insp.status == 'draft'" class="badge text-bg-warning">Draft</span>
+                            </td>
+                            <td class="text-end">
+                                <t t-if="insp.status == 'passed'">
+                                    <div class="btn-group" role="group">
+                                        <a t-attf-href="/report/pdf/certification.report_certificate_template/#{insp.id}"
+                                           class="btn btn-sm btn-primary" target="_blank" title="Download Certificate">
+                                            <i class="fa fa-file-pdf-o"/>
+                                            Cert
+                                        </a>
+                                        <a t-attf-href="/inspection/qr_download/#{insp.id}" class="btn btn-sm btn-dark"
+                                           target="_blank" title="Download QR Code">
+                                            <i class="fa fa-qrcode"/>
+                                            QR
+                                        </a>
+                                    </div>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+</odoo>

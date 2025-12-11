@@ -1,0 +1,71 @@
+<odoo>
+    <record id="action_inspection_category" model="ir.actions.act_window">
+        <field name="name">Categories</field>
+        <field name="res_model">inspection.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_inspection_category_form" model="ir.ui.view">
+        <field name="name">inspection.category.form</field>
+        <field name="model">inspection.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_inspections"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-list-alt">
+                            <field name="inspection_count" widget="statinfo" string="Inspections"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1>
+                            <field name="name" placeholder="e.g. Scissor Lift"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="description"/>
+                        <field name="standard" placeholder="e.g. BS EN 280:2013"/>
+                    </group>
+                    <notebook>
+                        <page string="Standard Checklist">
+                            <field name="question_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="section" placeholder="Section..."/>
+                                    <field name="serial_no" placeholder="No."/>
+                                    <field name="name" placeholder="Examination Item..."/>
+
+                                    <field name="is_accepted" string="A"/>
+                                    <field name="is_rejected" string="R"/>
+                                    <field name="is_na" string="N/A"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_inspection_category_list" model="ir.ui.view">
+        <field name="name">inspection.category.list</field>
+        <field name="model">inspection.category</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="standard" optional="show"/>
+                <field name="inspection_count" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <menuitem id="menu_certification_root" name="Certification" sequence="4"/>
+    <menuitem id="menu_inspection_category" name="Categories" parent="menu_certification_root"
+              action="action_inspection_category" sequence="2"/>
+    <menuitem id="menu_certification_customers" name="Customers" parent="menu_certification_root"
+              action="base.action_partner_customer_form" sequence="1"/>
+</odoo>

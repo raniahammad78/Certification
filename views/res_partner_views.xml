@@ -1,0 +1,46 @@
+<odoo>
+    <record id="view_partner_form_inherit_inspection" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.inspection</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <div name="button_box" position="inside">
+                <button name="action_view_machines" type="object" class="oe_stat_button" icon="fa-cogs">
+                    <field name="machine_count" widget="statinfo" string="Machines"/>
+                </button>
+                <button name="action_view_inspections" type="object" class="oe_stat_button" icon="fa-list-alt">
+                    <field name="inspection_count" widget="statinfo" string="Inspections"/>
+                </button>
+                <button name="action_view_categories" type="object" class="oe_stat_button" icon="fa-tags">
+                    <field name="category_count" widget="statinfo" string="Categories"/>
+                </button>
+            </div>
+
+            <notebook position="inside">
+                <page string="Machines">
+                    <field name="machine_ids">
+                        <list editable="bottom">
+                            <field name="name"/>
+                            <field name="serial_number"/>
+                            <field name="model_no"/>
+                            <field name="category_id"/>
+                            <button name="action_create_inspection" string="Inspect" type="object" class="btn-primary"/>
+                        </list>
+                    </field>
+                </page>
+
+                <page string="Categories">
+                    <field name="category_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="standard"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+
+        </field>
+    </record>
+</odoo>
