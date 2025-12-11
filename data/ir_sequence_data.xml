@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_inspection_inspection" model="ir.sequence">
+        <field name="name">Inspection Sequence</field>
+        <field name="code">inspection.inspection</field>
+        <field name="prefix">INSP</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>
