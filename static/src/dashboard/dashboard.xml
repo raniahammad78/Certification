@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="certification.InspectionDashboard" owl="1">
+        <div class="o_dashboard_smooth h-100 overflow-auto">
+
+            <div class="dashboard-header">
+                <div>
+                    <span class="dashboard-title">Equipment</span>
+                    <span class="dashboard-subtitle">/ WORK SITE OVERVIEW</span>
+                </div>
+                <div class="text-muted small">
+                    <i class="fa fa-map-marker me-1"/>
+                    Main Workshop
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-3">
+                    <div class="kpi-mini-card kpi-blue"
+                         style="cursor: pointer;"
+                         t-on-click="() => this.openView('inspection.machine', 'list')">
+                        <div>
+                            <div class="kpi-label">Total Machines</div>
+                            <div class="kpi-number">
+                                <t t-esc="state.kpi.total_machines"/>
+                            </div>
+                        </div>
+                        <i class="fa fa-cube text-primary opacity-50 fa-2x"/>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="kpi-mini-card kpi-green"
+                         style="cursor: pointer;"
+                         t-on-click="() => this.openInspectionsByStatus('passed')">
+                        <div>
+                            <div class="kpi-label">Passed</div>
+                            <div class="kpi-number">
+                                <t t-esc="state.kpi.passed"/>
+                            </div>
+                        </div>
+                        <i class="fa fa-check-circle text-success opacity-50 fa-2x"/>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="kpi-mini-card kpi-red"
+                         style="cursor: pointer;"
+                         t-on-click="() => this.openInspectionsByStatus('failed')">
+                        <div>
+                            <div class="kpi-label">Failed</div>
+                            <div class="kpi-number">
+                                <t t-esc="state.kpi.failed"/>
+                            </div>
+                        </div>
+                        <i class="fa fa-exclamation-triangle text-danger opacity-50 fa-2x"/>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="kpi-mini-card kpi-yellow"
+                         style="cursor: pointer;"
+                         t-on-click="() => this.openInspectionsByStatus('pending')">
+                        <div>
+                            <div class="kpi-label">Pending</div>
+                            <div class="kpi-number">
+                                <t t-esc="state.kpi.total_insp - state.kpi.passed - state.kpi.failed"/>
+                            </div>
+                        </div>
+                        <i class="fa fa-clock-o text-warning opacity-50 fa-2x"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="equip-card h-100">
+                        <div class="equip-card-header">
+                            <span class="equip-card-title">My Shortcuts</span>
+                        </div>
+                        <div class="equip-card-body d-flex align-items-center">
+                            <div class="shortcut-grid">
+                                <button class="shortcut-btn bg-gradient-purple"
+                                        t-on-click="() => this.openView('inspection.inspection', 'form')">
+                                    <i class="fa fa-plus-circle"/>
+                                    <span>Create<br/>Inspection
+                                    </span>
+                                </button>
+                                <button class="shortcut-btn bg-gradient-teal"
+                                        t-on-click="() => this.openView('inspection.machine', 'form')">
+                                    <i class="fa fa-hdd-o"/>
+                                    <span>Add New<br/>Equipment
+                                    </span>
+                                </button>
+                                <button class="shortcut-btn bg-gradient-orange"
+                                        t-on-click="() => this.openView('inspection.inspection')">
+                                    <i class="fa fa-file-text-o"/>
+                                    <span>Check<br/>Reports
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="equip-card h-100">
+                        <div class="equip-card-header">
+                            <span class="equip-card-title">Inspection Status</span>
+                            <i class="fa fa-pie-chart text-muted"/>
+                        </div>
+                        <div class="equip-card-body d-flex align-items-center justify-content-center">
+                            <div style="height: 250px; width: 100%; position: relative;">
+                                <canvas t-ref="chart_status"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="equip-card h-100">
+                        <div class="equip-card-header">
+                            <span class="equip-card-title">Recent Activity</span>
+                            <small class="text-primary" style="cursor:pointer"
+                                   t-on-click="() => this.openView('inspection.inspection')">See All
+                            </small>
+                        </div>
+                        <div class="equip-card-body p-0">
+                            <div class="table-responsive p-3">
+                                <table class="equip-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Ref</th>
+                                            <th>Machine</th>
+                                            <th class="text-end">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.lists.recent" t-as="insp" t-key="insp.id"
+                                            t-on-click="() => this.openInspection(insp.id)">
+                                            <td style="width: 100px;">
+                                                <t t-esc="insp.start_date"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="insp.name"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="insp.machine_name"/>
+                                            </td>
+                                            <td class="text-end">
+                                                <span t-if="insp.status == 'passed'">
+                                                    <i class="fa fa-check text-success me-1"/>
+                                                    OK
+                                                </span>
+                                                <span t-if="insp.status == 'failed'">
+                                                    <i class="fa fa-times text-danger me-1"/>
+                                                    Fail
+                                                </span>
+                                                <span t-if="insp.status == 'draft'">
+                                                    <i class="fa fa-circle-o text-warning me-1"/>
+                                                    Draft
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="equip-card h-100">
+                        <div class="equip-card-header">
+                            <span class="equip-card-title text-danger">Verification Required</span>
+                            <i class="fa fa-exclamation-circle text-danger opacity-50"/>
+                        </div>
+                        <div class="equip-card-body p-0">
+                            <div class="table-responsive p-3">
+                                <table class="equip-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Machine</th>
+                                            <th>Customer</th>
+                                            <th>Status</th>
+                                            <th class="text-end">Expires</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.lists.expiring" t-as="exp" t-key="exp.id"
+                                            t-on-click="() => this.openInspection(exp.id)">
+                                            <td>
+                                                <t t-esc="exp.machine_name"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="exp.customer_name"/>
+                                            </td>
+                                            <td>
+                                                <span class="bg-success-soft">Verified</span>
+                                            </td>
+                                            <td class="fw-bold text-danger text-end">
+                                                <t t-esc="exp.expire_date"/>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="state.lists.expiring.length === 0">
+                                            <td colspan="4" class="text-center py-4 text-muted">All equipment is
+                                                currently valid.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>
