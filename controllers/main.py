@@ -34,24 +34,42 @@ class InspectionController(http.Controller):
         return request.render('certification.public_machine_info', {'machine': machine})
 
     # 2. DOWNLOAD QR CODE
-    @http.route('/inspection/qr_download/<int:inspection_id>', type='http', auth='user', website=True)
+    @http.route('/inspection/qr_download/<int:inspection_id>', type='http', auth='public', website=True)
     def download_qr_code(self, inspection_id, **kwargs):
+        """Download QR code image for an inspection"""
         inspection = request.env['inspection.inspection'].sudo().browse(inspection_id)
 
-        if not inspection.exists() or not inspection.qr_image:
-            return request.not_found()
-        if inspection.customer_id and inspection.customer_id != request.env.user.partner_id:
+        # Check if inspection exists
+        if not inspection.exists():
+            _logger.warning(f"Inspection {inspection_id} not found")
             return request.not_found()
 
-        image_content = base64.b64decode(inspection.qr_image)
-        safe_name = (inspection.name or str(inspection.id)).replace('/', '_')
-        return request.make_response(
-            image_content,
-            headers=[
-                ('Content-Type', 'image/png'),
-                ('Content-Disposition', f'attachment; filename=QR_{safe_name}.png')
-            ]
-        )
+        # Check if QR image exists
+        if not inspection.qr_image:
+            _logger.warning(f"QR image not found for inspection {inspection_id}")
+            return request.not_found()
+
+        try:
+            # Decode base64 image
+            image_content = base64.b64decode(inspection.qr_image)
+
+            # Create safe filename
+            safe_name = (inspection.name or str(inspection.id)).replace('/', '_').replace(' ', '_')
+            filename = f'QR_{safe_name}.png'
+
+            _logger.info(f"Downloading QR code for inspection {inspection_id}: {filename}")
+
+            return request.make_response(
+                image_content,
+                headers=[
+                    ('Content-Type', 'image/png'),
+                    ('Content-Disposition', f'attachment; filename="{filename}"'),
+                    ('Content-Length', len(image_content))
+                ]
+            )
+        except Exception as e:
+            _logger.error(f"Error downloading QR code for inspection {inspection_id}: {str(e)}")
+            return request.not_found()
 
     # 3. DIGITAL SIGNATURE
     @http.route('/inspection/sign/<int:inspection_id>', type='http', auth='user', methods=['POST'], website=True)
@@ -81,13 +99,12 @@ class MachineCustomerPortal(CustomerPortal):
         values = super()._prepare_home_portal_values(counters)
         partner = request.env.user.partner_id
 
-        # FIX: Removed "if 'machine_count' in counters" check
-        # We must simply add the values so the template can find them.
-        values['machine_count'] = request.env['inspection.machine'].search_count([
+        # Add machine and inspection counts
+        values['machine_count'] = request.env['inspection.machine'].sudo().search_count([
             ('partner_id', '=', partner.id)
         ])
 
-        values['inspection_count'] = request.env['inspection.inspection'].search_count([
+        values['inspection_count'] = request.env['inspection.inspection'].sudo().search_count([
             ('customer_id', '=', partner.id)
         ])
         return values
@@ -97,7 +114,7 @@ class MachineCustomerPortal(CustomerPortal):
     def portal_my_machines(self, page=1, sortby=None, **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
-        Machine = request.env['inspection.machine']
+        Machine = request.env['inspection.machine'].sudo()
         domain = [('partner_id', '=', partner.id)]
 
         machine_count = Machine.search_count(domain)
@@ -115,7 +132,9 @@ class MachineCustomerPortal(CustomerPortal):
     # 3. MACHINE DETAIL
     @http.route(['/my/machines/<int:machine_id>'], type='http', auth="user", website=True)
     def portal_my_machine_detail(self, machine_id, **kw):
-        machine = request.env['inspection.machine'].browse(machine_id)
+        machine = request.env['inspection.machine'].sudo().browse(machine_id)
+
+        # Security check
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
@@ -134,7 +153,9 @@ class MachineCustomerPortal(CustomerPortal):
     @http.route('/my/machines/<int:machine_id>/request_inspection', type='http', auth="user", methods=['POST'],
                 website=True)
     def request_inspection(self, machine_id, **kwargs):
-        machine = request.env['inspection.machine'].browse(machine_id)
+        machine = request.env['inspection.machine'].sudo().browse(machine_id)
+
+        # Security check
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
@@ -169,7 +190,9 @@ class MachineCustomerPortal(CustomerPortal):
     # 5. UPLOAD LOG
     @http.route('/my/machines/<int:machine_id>/upload_log', type='http', auth="user", methods=['POST'], website=True)
     def upload_maintenance_log(self, machine_id, **kwargs):
-        machine = request.env['inspection.machine'].browse(machine_id)
+        machine = request.env['inspection.machine'].sudo().browse(machine_id)
+
+        # Security check
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
@@ -191,7 +214,7 @@ class MachineCustomerPortal(CustomerPortal):
     def portal_my_inspections(self, page=1, sortby=None, **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
-        Inspection = request.env['inspection.inspection']
+        Inspection = request.env['inspection.inspection'].sudo()
         domain = [('customer_id', '=', partner.id)]
 
         searchbar_sortings = {
