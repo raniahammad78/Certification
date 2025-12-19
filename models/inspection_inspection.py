@@ -3,6 +3,9 @@ from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 import base64
 from io import BytesIO
+import logging
+
+_logger = logging.getLogger(__name__)
 
 try:
     import qrcode
@@ -256,17 +259,18 @@ class InspectionInspection(models.Model):
             vals['name'] = self.env['ir.sequence'].next_by_code('inspection.inspection') or 'New'
         return super(InspectionInspection, self).create(vals)
 
-        # -------------------------------------------------------------------------
-        # ACTION PASS
-        # -------------------------------------------------------------------------
-        # -------------------------------------------------------------------------
-        # ACTION PASS
-        # -------------------------------------------------------------------------
-        def action_pass(self):
-            self.write({'status': 'passed'})
+    # -------------------------------------------------------------------------
+    # ACTION METHODS
+    # -------------------------------------------------------------------------
 
-            # CORRECT: Points to 'certification.action_report_certificate'
-            pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
+    def action_pass(self):
+        """Mark inspection as passed and generate certificate PDF"""
+        self.write({'status': 'passed'})
+
+        # Generate PDF certificate
+        try:
+            report = self.env.ref('certification.action_report_certificate')
+            pdf_content, _ = report._render_qweb_pdf(self.id)
 
             self.env['ir.attachment'].create({
                 'name': f"Certificate - {self.name}.pdf",
@@ -276,42 +280,10 @@ class InspectionInspection(models.Model):
                 'res_id': self.id,
                 'mimetype': 'application/pdf'
             })
-            return True  # -------------------------------------------------------------------------
+            _logger.info(f"Certificate PDF generated successfully for inspection {self.name}")
+        except Exception as e:
+            _logger.error(f"Failed to generate certificate PDF for inspection {self.name}: {e}")
 
-    # ACTION PASS
-    # -------------------------------------------------------------------------
-    def action_pass(self):
-        self.write({'status': 'passed'})
-
-        # CORRECT: Points to 'certification.action_report_certificate'
-        pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
-
-        self.env['ir.attachment'].create({
-            'name': f"Certificate - {self.name}.pdf",
-            'type': 'binary',
-            'datas': base64.b64encode(pdf_content),
-            'res_model': 'inspection.inspection',
-            'res_id': self.id,
-            'mimetype': 'application/pdf'
-        })
-        return True  # -------------------------------------------------------------------------
-
-    # ACTION PASS
-    # -------------------------------------------------------------------------
-    def action_pass(self):
-        self.write({'status': 'passed'})
-
-        # CORRECT: Points to 'certification.action_report_certificate'
-        # We must use the ACTION ID ('action_report_certificate'), not the template ID
-        pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
-        self.env['ir.attachment'].create({
-            'name': f"Certificate - {self.name}.pdf",
-            'type': 'binary',
-            'datas': base64.b64encode(pdf_content),
-            'res_model': 'inspection.inspection',
-            'res_id': self.id,
-            'mimetype': 'application/pdf'
-        })
         return True
 
     def action_fail(self):
@@ -385,6 +357,7 @@ class InspectionInspectionLine(models.Model):
 class InspectionInspectionImage(models.Model):
     _name = 'inspection.inspection.image'
     _description = 'Inspection Evidence Photo'
+
     line_id = fields.Many2one('inspection.inspection.line', string="Question Line", ondelete='cascade')
     name = fields.Char(string="Name")
     image = fields.Image(string="Photo", max_width=1024, max_height=1024)
