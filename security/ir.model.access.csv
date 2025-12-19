@@ -10,3 +10,6 @@ access_inspection_inspection_portal,inspection.inspection.portal,model_inspectio
 access_inspection_category_portal,inspection.category.portal,model_inspection_category,base.group_portal,1,0,0,0
 access_inspection_question_portal,inspection.question.portal,model_inspection_question,base.group_portal,1,0,0,0
 access_inspection_inspection_line_portal,inspection.inspection.line.portal,model_inspection_inspection_line,base.group_portal,1,0,0,0
+access_portal_attachment_read,ir.attachment,base.model_ir_attachment,base.group_portal,1,0,0,0
+access_portal_attachment_create,ir.attachment,base.model_ir_attachment,base.group_portal,0,0,1,0
+access_portal_partner_read,res.partner,base.model_res_partner,base.group_portal,1,0,0,0
