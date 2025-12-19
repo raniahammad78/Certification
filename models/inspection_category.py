@@ -8,16 +8,26 @@ class InspectionCategory(models.Model):
     name = fields.Char(string="Category Name", required=True)
     description = fields.Text(string="Description")
 
-    standard = fields.Text(string="Standard")
+    # CHANGED: 'Text' -> 'Char' allows Grouping and fixes "False" in Kanban
+    standard = fields.Char(string="Standard")
+
+    # NEW: Required for Kanban Color Picker
+    color = fields.Integer(string='Color Index')
 
     question_ids = fields.One2many('inspection.question', 'category_id', string="Standard Checklist")
     inspection_ids = fields.One2many('inspection.inspection', 'category_id', string="Inspections")
-    inspection_count = fields.Integer(string="Inspection Count", compute='_compute_inspection_count')
 
-    @api.depends('inspection_ids')
-    def _compute_inspection_count(self):
+    # NEW: Link to machines for Smart Button
+    machine_ids = fields.One2many('inspection.machine', 'category_id', string="Machines")
+
+    inspection_count = fields.Integer(string="Inspection Count", compute='_compute_counts')
+    machine_count = fields.Integer(string="Machine Count", compute='_compute_counts')
+
+    @api.depends('inspection_ids', 'machine_ids')
+    def _compute_counts(self):
         for record in self:
             record.inspection_count = len(record.inspection_ids)
+            record.machine_count = len(record.machine_ids)
 
     def action_view_inspections(self):
         self.ensure_one()
@@ -30,10 +40,23 @@ class InspectionCategory(models.Model):
             'context': {'default_category_id': self.id},
         }
 
+    def action_view_machines(self):
+        self.ensure_one()
+        return {
+            'name': 'Machines',
+            'type': 'ir.actions.act_window',
+            'res_model': 'inspection.machine',
+            'view_mode': 'list,form',
+            'domain': [('category_id', '=', self.id)],
+            'context': {'default_category_id': self.id},
+        }
+
     @api.model
     def create(self, vals):
         res = super(InspectionCategory, self).create(vals)
-        res._populate_standard_questions()
+        # Only populate if questions are not already provided
+        if not res.question_ids:
+            res._populate_standard_questions()
         return res
 
     def _populate_standard_questions(self):
@@ -90,10 +113,10 @@ class InspectionQuestion(models.Model):
     section = fields.Char(string="Section")
     serial_no = fields.Char(string="No")
     name = fields.Char(string="Examination Item", required=True)
-    sequence = fields.Integer(string="Sequence", default=10)
+    sequence = fields.Integer(string="Sequence")
 
     # Default Value Checkboxes
-    is_accepted = fields.Boolean(string="A", default=True)
+    is_accepted = fields.Boolean(string="A")
     is_rejected = fields.Boolean(string="R")
     is_na = fields.Boolean(string="N/A")
 

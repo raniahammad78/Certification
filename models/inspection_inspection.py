@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 import base64
 from io import BytesIO
@@ -11,6 +12,7 @@ except ImportError:
 
 class InspectionInspection(models.Model):
     _name = 'inspection.inspection'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Inspection Sheet'
     _order = 'start_date desc, id desc'
 
@@ -20,6 +22,8 @@ class InspectionInspection(models.Model):
     customer_id = fields.Many2one('res.partner', string="Customer", required=True)
     machine_id = fields.Many2one('inspection.machine', string="Machine", required=True)
     category_id = fields.Many2one(related='machine_id.category_id', string="Category", store=True)
+
+    gantt_name = fields.Char(string="Gantt Label", compute='_compute_gantt_name', store=True)
 
     start_date = fields.Date(string="Date of Inspection", default=fields.Date.today, required=True)
     expire_date = fields.Date(string="Next Due Date")
@@ -33,12 +37,17 @@ class InspectionInspection(models.Model):
         ('initial', 'Initial Inspection')
     ], string="Type of Examination", default='thorough')
 
+    # Inspector Signature (Internal)
     inspector_name = fields.Char(string="Inspector Name")
     inspector_signature = fields.Binary(string="Inspector Signature")
 
+    # Customer Signature (External)
+    customer_signature = fields.Binary(string="Customer Signature", attachment=True)
+    signed_date = fields.Datetime(string="Signed On")
+    signed_by = fields.Char(string="Signed By")
+
     location_site = fields.Char(string="Location of Inspection")
 
-    # Documents Reviewed
     doc_report = fields.Boolean(string="Previous Inspection Report", default=True)
     doc_maintenance = fields.Boolean(string="Maintenance Record", default=True)
     doc_load_chart = fields.Boolean(string="Load Chart", default=True)
@@ -47,12 +56,144 @@ class InspectionInspection(models.Model):
         ('draft', 'Draft'),
         ('passed', 'Passed'),
         ('failed', 'Failed')
-    ], string="Status", default='draft', copy=False)
+    ], string="Status", default='draft', copy=False, tracking=True)
 
     line_ids = fields.One2many('inspection.inspection.line', 'inspection_id', string="Checklist")
 
     qr_code_url = fields.Char(compute='_compute_qr_code_url', string="QR URL")
     qr_image = fields.Binary(string="QR Code Image", compute='_compute_qr_image')
+
+    # -------------------------------------------------------------------------
+    # CONSTRAINTS & COMPUTES
+    # -------------------------------------------------------------------------
+
+    @api.constrains('start_date', 'expire_date')
+    def _check_dates(self):
+        for record in self:
+            if record.expire_date and record.start_date and record.expire_date < record.start_date:
+                raise ValidationError("Error: The Expiration Date cannot be earlier than the Inspection Start Date!")
+
+    @api.depends('machine_id', 'customer_id')
+    def _compute_gantt_name(self):
+        for record in self:
+            machine = record.machine_id.name if record.machine_id else "N/A"
+            customer = record.customer_id.name if record.customer_id else "No Customer"
+            record.gantt_name = f"{machine} ({customer})"
+
+    # -------------------------------------------------------------------------
+    # DASHBOARD STATS
+    # -------------------------------------------------------------------------
+    @api.model
+    def get_dashboard_stats(self):
+        total_insp = self.search_count([])
+        passed = self.search_count([('status', '=', 'passed')])
+        failed = self.search_count([('status', '=', 'failed')])
+        Machine = self.env['inspection.machine']
+        total_machines = Machine.search_count([])
+        Category = self.env['inspection.category']
+        total_categories = Category.search_count([])
+
+        if total_insp == 0:
+            status_data = [0, 0, 0]
+        else:
+            draft = total_insp - passed - failed
+            status_data = [passed, failed, draft]
+
+        machines_by_cat = Machine.read_group(domain=[], fields=['category_id'], groupby=['category_id'])
+        cat_labels = []
+        cat_data = []
+        for group in machines_by_cat:
+            category = group.get('category_id')
+            count = group.get('category_id_count', 0)
+            if category:
+                cat_labels.append(category[1])
+                cat_data.append(count)
+            else:
+                cat_labels.append('Uncategorized')
+                cat_data.append(count)
+
+        recent_inspections = self.search_read(
+            domain=[],
+            fields=['name', 'machine_id', 'status', 'start_date', 'signed_by', 'signed_date'],
+            limit=5,
+            order='create_date desc'
+        )
+        for insp in recent_inspections:
+            if insp['machine_id']:
+                insp['machine_name'] = insp['machine_id'][1]
+
+        today = fields.Date.today()
+        next_30_days = today + relativedelta(days=30)
+
+        expiring_inspections = self.search_read(
+            domain=[('status', '=', 'passed'), ('expire_date', '>=', today), ('expire_date', '<=', next_30_days)],
+            fields=['name', 'machine_id', 'expire_date', 'customer_id'],
+            limit=5,
+            order='expire_date asc'
+        )
+        for exp in expiring_inspections:
+            if exp['machine_id']:
+                exp['machine_name'] = exp['machine_id'][1]
+            if exp['customer_id']:
+                exp['customer_name'] = exp['customer_id'][1]
+
+        return {
+            'kpi': {'total_insp': total_insp, 'passed': passed, 'failed': failed, 'total_machines': total_machines,
+                    'total_categories': total_categories},
+            'charts': {'status': status_data, 'machines_by_category': {'labels': cat_labels, 'data': cat_data}},
+            'lists': {'recent': recent_inspections, 'expiring': expiring_inspections}
+        }
+
+    @api.model
+    def get_customer_dashboard_stats(self):
+        Machine = self.env['inspection.machine']
+        Inspection = self.env['inspection.inspection']
+        machines_by_partner = Machine.read_group(
+            domain=[('partner_id', '!=', False)], fields=['partner_id'], groupby=['partner_id'],
+            orderby='partner_id_count desc'
+        )
+        market_share_labels = []
+        market_share_data = []
+        active_clients_count = len(machines_by_partner)
+        largest_fleet_holder = {'id': False, 'name': 'None', 'count': 0}
+
+        for index, group in enumerate(machines_by_partner):
+            partner_name = group['partner_id'][1]
+            partner_id = group['partner_id'][0]
+            count = group['partner_id_count']
+            if index < 5:
+                market_share_labels.append(partner_name)
+                market_share_data.append(count)
+            if index == 0:
+                largest_fleet_holder = {'id': partner_id, 'name': partner_name, 'count': count}
+
+        failed_by_partner = Inspection.read_group(
+            domain=[('status', '=', 'failed'), ('customer_id', '!=', False)], fields=['customer_id'],
+            groupby=['customer_id'], orderby='customer_id_count desc', limit=5
+        )
+        risk_list = []
+        for group in failed_by_partner:
+            risk_list.append(
+                {'id': group['customer_id'][0], 'name': group['customer_id'][1], 'count': group['customer_id_count']})
+
+        return {
+            'kpi': {'active_clients': active_clients_count, 'largest_fleet': largest_fleet_holder},
+            'charts': {'market_share': {'labels': market_share_labels, 'data': market_share_data}},
+            'lists': {'risk_watchlist': risk_list}
+        }
+
+    # -------------------------------------------------------------------------
+    # STANDARD METHODS
+    # -------------------------------------------------------------------------
+
+    @api.depends('name', 'machine_id')
+    def _compute_qr_code_url(self):
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        for rec in self:
+            if rec.machine_id:
+                rec.qr_code_url = f"{base_url}/machine/info/{rec.machine_id.id}"
+            else:
+                rec.qr_code_url = base_url
 
     @api.depends('qr_code_url')
     def _compute_qr_image(self):
@@ -82,7 +223,6 @@ class InspectionInspection(models.Model):
             if self.machine_id.partner_id:
                 self.customer_id = self.machine_id.partner_id
 
-            # Auto-fill last inspection date if exists
             last_insp = self.search(
                 [('machine_id', '=', self.machine_id.id), ('status', '=', 'passed'), ('id', '!=', self._origin.id)],
                 limit=1, order='start_date desc')
@@ -110,20 +250,69 @@ class InspectionInspection(models.Model):
         if self.start_date:
             self.expire_date = self.start_date + relativedelta(months=6)
 
-    @api.depends('name')
-    def _compute_qr_code_url(self):
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        for rec in self:
-            rec.qr_code_url = f"{base_url}/inspection/view/{rec.id}" if rec.id else base_url
-
     @api.model
     def create(self, vals):
         if vals.get('name', 'New') == 'New':
             vals['name'] = self.env['ir.sequence'].next_by_code('inspection.inspection') or 'New'
         return super(InspectionInspection, self).create(vals)
 
+        # -------------------------------------------------------------------------
+        # ACTION PASS
+        # -------------------------------------------------------------------------
+        # -------------------------------------------------------------------------
+        # ACTION PASS
+        # -------------------------------------------------------------------------
+        def action_pass(self):
+            self.write({'status': 'passed'})
+
+            # CORRECT: Points to 'certification.action_report_certificate'
+            pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
+
+            self.env['ir.attachment'].create({
+                'name': f"Certificate - {self.name}.pdf",
+                'type': 'binary',
+                'datas': base64.b64encode(pdf_content),
+                'res_model': 'inspection.inspection',
+                'res_id': self.id,
+                'mimetype': 'application/pdf'
+            })
+            return True  # -------------------------------------------------------------------------
+
+    # ACTION PASS
+    # -------------------------------------------------------------------------
     def action_pass(self):
         self.write({'status': 'passed'})
+
+        # CORRECT: Points to 'certification.action_report_certificate'
+        pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
+
+        self.env['ir.attachment'].create({
+            'name': f"Certificate - {self.name}.pdf",
+            'type': 'binary',
+            'datas': base64.b64encode(pdf_content),
+            'res_model': 'inspection.inspection',
+            'res_id': self.id,
+            'mimetype': 'application/pdf'
+        })
+        return True  # -------------------------------------------------------------------------
+
+    # ACTION PASS
+    # -------------------------------------------------------------------------
+    def action_pass(self):
+        self.write({'status': 'passed'})
+
+        # CORRECT: Points to 'certification.action_report_certificate'
+        # We must use the ACTION ID ('action_report_certificate'), not the template ID
+        pdf_content, _ = self.env.ref('certification.action_report_certificate')._render_qweb_pdf(self.id)
+        self.env['ir.attachment'].create({
+            'name': f"Certificate - {self.name}.pdf",
+            'type': 'binary',
+            'datas': base64.b64encode(pdf_content),
+            'res_model': 'inspection.inspection',
+            'res_id': self.id,
+            'mimetype': 'application/pdf'
+        })
+        return True
 
     def action_fail(self):
         self.write({'status': 'failed'})
@@ -138,6 +327,21 @@ class InspectionInspection(models.Model):
             'url': f'/inspection/qr_download/{self.id}',
             'target': 'self',
         }
+
+    @api.model
+    def action_send_expiration_reminders(self):
+        today = fields.Date.today()
+        target_date = today + relativedelta(days=30)
+        expiring_inspections = self.search([
+            ('status', '=', 'passed'),
+            ('expire_date', '=', target_date)
+        ])
+        template = self.env.ref('certification.mail_template_inspection_expiration', raise_if_not_found=False)
+        if not template:
+            return
+        for inspection in expiring_inspections:
+            if inspection.customer_id.email:
+                template.send_mail(inspection.id, force_send=True)
 
 
 class InspectionInspectionLine(models.Model):
