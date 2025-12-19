@@ -21,10 +21,8 @@
             <field name="name">Inspection Certificate</field>
             <field name="model">inspection.inspection</field>
             <field name="report_type">qweb-pdf</field>
-
             <field name="report_name">certification.report_certificate_template</field>
             <field name="report_file">certification.report_certificate_template</field>
-
             <field name="print_report_name">'Certificate - %s' % (object.name)</field>
             <field name="binding_model_id" ref="model_inspection_inspection"/>
             <field name="binding_type">report</field>
