@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="certification.CustomerDashboard" owl="1">
+        <div class="o_dashboard_smooth h-100 overflow-auto">
+
+            <div class="d-flex justify-content-between align-items-center mb-4 ps-2">
+                <div>
+                    <div class="ios-subtitle">Client Insights</div>
+                    <div class="ios-title">Customers</div>
+                </div>
+                <div>
+                    <button class="btn btn-dark rounded-pill px-4 py-2 shadow-sm fw-bold"
+                            t-on-click="() => this.action.doAction('base.action_partner_form')">
+                        <i class="fa fa-plus me-2"/>New
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+
+                <div class="col-md-6">
+                    <div class="ios-widget position-relative overflow-hidden"
+                         t-on-click="() => this.openAllCustomers()"
+                         style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-start position-relative"
+                             style="z-index: 2;">
+                            <div>
+                                <div class="ios-icon-box ios-purple">
+                                    <i class="fa fa-users"/>
+                                </div>
+                                <div class="widget-value">
+                                    <t t-esc="state.kpi.active_clients"/>
+                                </div>
+                                <div class="widget-label">Active Clients</div>
+                                <small class="text-primary fw-bold mt-2 d-block">View All
+                                    <i class="fa fa-arrow-right"/>
+                                </small>
+                            </div>
+                        </div>
+                        <i class="fa fa-circle-o-notch fa-5x text-muted opacity-10 position-absolute"
+                           style="bottom: -20px; right: -20px; z-index: 1;"/>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="ios-widget position-relative overflow-hidden"
+                         t-on-click="() => this.openCustomer(state.kpi.largest_fleet.id)"
+                         style="cursor: pointer;">
+                        <div class="d-flex justify-content-between align-items-start position-relative"
+                             style="z-index: 2;">
+                            <div>
+                                <div class="ios-icon-box ios-yellow">
+                                    <i class="fa fa-trophy"/>
+                                </div>
+                                <div class="widget-value text-truncate" style="font-size: 1.8rem; max-width: 250px;">
+                                    <t t-esc="state.kpi.largest_fleet.name"/>
+                                </div>
+                                <div class="widget-label">Largest Fleet Holder</div>
+                                <div class="widget-sub">
+                                    <i class="fa fa-hdd-o me-1"/>
+                                    <t t-esc="state.kpi.largest_fleet.count"/>
+                                    Machines
+                                </div>
+                            </div>
+                        </div>
+                        <i class="fa fa-star fa-5x text-warning opacity-25 position-absolute"
+                           style="bottom: -20px; right: -20px; z-index: 1;"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="ios-widget">
+                        <div class="mb-4">
+                            <h5 class="fw-bold mb-1">Market Share</h5>
+                            <span class="text-muted small">Top 5 Clients by Fleet Size</span>
+                        </div>
+                        <div style="height: 300px; position: relative;">
+                            <canvas t-ref="chart_market"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="ios-widget">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0 text-danger">Risk Watchlist</h5>
+                            <i class="fa fa-exclamation-circle text-danger opacity-50"/>
+                        </div>
+                        <div class="d-flex flex-column h-100 overflow-auto">
+                            <t t-foreach="state.lists.risk_watchlist" t-as="risk" t-key="risk.id">
+                                <div class="ios-list-item" t-on-click="() => this.openCustomer(risk.id)">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-danger bg-opacity-10 text-danger fw-bold d-flex align-items-center justify-content-center me-3"
+                                             style="width:35px; height:35px;">
+                                            !
+                                        </div>
+                                        <span class="fw-bold text-dark">
+                                            <t t-esc="risk.name"/>
+                                        </span>
+                                    </div>
+                                    <span class="badge bg-danger rounded-pill px-3 py-2">
+                                        <t t-esc="risk.count"/>
+                                        Failures
+                                    </span>
+                                </div>
+                            </t>
+                            <t t-if="state.lists.risk_watchlist.length === 0">
+                                <div class="text-center text-muted py-5">
+                                    <i class="fa fa-check-circle fa-2x text-success mb-2"/>
+                                    <br/>
+                                    All clients are in good standing.
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </t>
+</templates>
