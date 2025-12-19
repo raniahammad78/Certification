@@ -1,15 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="action_inspection_inspection" model="ir.actions.act_window">
         <field name="name">Inspections</field>
         <field name="res_model">inspection.inspection</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,calendar,gantt,graph,pivot,activity,form</field>
+        <field name="context">{'search_default_group_status': 1}</field>
+    </record>
+
+    <record id="view_inspection_gantt" model="ir.ui.view">
+        <field name="name">inspection.inspection.gantt</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <gantt date_start="start_date"
+                   date_stop="expire_date"
+                   default_group_by="inspector_name"
+                   default_scale="month"
+                   color="status"
+                   string="Inspection Schedule"
+                   decoration-success="status == 'passed'"
+                   decoration-danger="status == 'failed'"
+                   decoration-warning="status == 'draft'">
+                <field name="name"/>
+                <field name="status"/>
+                <field name="machine_id"/>
+                <templates>
+                    <div t-name="gantt-popover" class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col">
+                                <ul class="pl-1 mb-0">
+                                    <li>
+                                        <strong>Ref:</strong>
+                                        <t t-esc="name"/>
+                                    </li>
+                                    <li>
+                                        <strong>Machine:</strong>
+                                        <t t-esc="machine_id[1]"/>
+                                    </li>
+                                    <li>
+                                        <strong>Status:</strong>
+                                        <t t-esc="status"/>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </templates>
+            </gantt>
+        </field>
+    </record>
+
+    <record id="view_inspection_activity" model="ir.ui.view">
+        <field name="name">inspection.inspection.activity</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <activity string="Inspection Activities">
+                <field name="customer_id"/>
+                <field name="start_date"/>
+                <templates>
+                    <div t-name="activity-box">
+                        <div>
+                            <field name="name" display="full"/>
+                            <field name="machine_id" muted="1" display="full"/>
+                        </div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <record id="view_inspection_calendar" model="ir.ui.view">
+        <field name="name">inspection.inspection.calendar</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <calendar string="Inspection Schedule"
+                      date_start="start_date"
+                      date_stop="expire_date"
+                      color="status"
+                      mode="month"
+                      quick_create="0">
+                <field name="machine_id"/>
+                <field name="customer_id"/>
+                <field name="status" filters="1" invisible="1"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="view_inspection_graph" model="ir.ui.view">
+        <field name="name">inspection.inspection.graph</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <graph string="Inspection Analytics" type="pie" sample="1">
+                <field name="status"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_inspection_pivot" model="ir.ui.view">
+        <field name="name">inspection.inspection.pivot</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <pivot string="Inspection Analysis" sample="1">
+                <field name="start_date" interval="month" type="row"/>
+                <field name="status" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_inspection_kanban" model="ir.ui.view">
+        <field name="name">inspection.inspection.kanban</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status" class="o_kanban_small_column" sample="1">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="machine_id"/>
+                <field name="customer_id"/>
+                <field name="status"/>
+                <field name="start_date"/>
+                <progressbar field="status" colors='{"passed": "success", "failed": "danger", "draft": "warning"}'/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click oe_kanban_card">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                    <div class="o_dropdown_kanban dropdown">
+                                        <a role="button" class="dropdown-toggle o-no-caret btn"
+                                           data-bs-toggle="dropdown" href="#" aria-label="Dropdown menu"
+                                           title="Dropdown menu">
+                                            <span class="fa fa-ellipsis-v"/>
+                                        </a>
+                                        <div class="dropdown-menu" role="menu">
+                                            <a role="menuitem" type="edit" class="dropdown-item">Edit</a>
+                                            <a role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Machine:</strong>
+                                    <field name="machine_id"/>
+                                </div>
+                                <div class="text-muted">
+                                    <i class="fa fa-user"/>
+                                    <field name="customer_id"/>
+                                </div>
+                                <div class="text-muted">
+                                    <i class="fa fa-calendar"/>
+                                    <field name="start_date"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right mt-2">
+                                    <field name="status" widget="label_selection"
+                                           options="{'classes': {'passed': 'success', 'failed': 'danger', 'draft': 'warning'}}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_inspection_search" model="ir.ui.view">
+        <field name="name">inspection.inspection.search</field>
+        <field name="model">inspection.inspection</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="machine_id"/>
+                <field name="customer_id"/>
+                <filter string="Passed" name="passed" domain="[('status', '=', 'passed')]"/>
+                <filter string="Failed" name="failed" domain="[('status', '=', 'failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Customer" name="group_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'start_date'}"/>
+                </group>
+            </search>
+        </field>
     </record>
 
     <record id="view_inspection_list" model="ir.ui.view">
         <field name="name">inspection.inspection.list</field>
         <field name="model">inspection.inspection</field>
         <field name="arch" type="xml">
-            <list decoration-success="status=='passed'" decoration-danger="status=='failed'">
+            <list decoration-success="status=='passed'" decoration-danger="status=='failed'"
+                  decoration-warning="status=='draft'">
                 <field name="name"/>
                 <field name="customer_id"/>
                 <field name="machine_id"/>
@@ -57,21 +237,25 @@
                             <field name="last_inspection_date"/>
                             <field name="inspection_type"/>
                         </group>
-                        <group>
-                            <field name="inspector_name"/>
-                            <field name="inspector_signature" widget="signature"/>
-                            <field name="qr_image" invisible="1"/>
-                        </group>
                     </group>
-
-                    <group string="Documents Reviewed">
+                    <group string="Signatures &amp; Documents">
                         <group>
                             <field name="doc_report"/>
                             <field name="doc_maintenance"/>
                             <field name="doc_load_chart"/>
                         </group>
-                    </group>
+                        <group>
+                            <field name="inspector_name"/>
 
+                            <field name="inspector_signature" widget="signature"/>
+
+                            <field name="customer_signature" widget="signature" readonly="1"
+                                   string="Customer Signature (From Portal)"/>
+                            <field name="signed_by" readonly="1" invisible="not customer_signature"/>
+
+                            <field name="qr_image" invisible="1"/>
+                        </group>
+                    </group>
                     <notebook>
                         <page string="Inspection Checklist">
                             <field name="line_ids" mode="list">
@@ -131,6 +315,7 @@
                         </page>
                     </notebook>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
