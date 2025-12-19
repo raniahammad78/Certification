@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="mail_template_inspection_expiration" model="mail.template">
+            <field name="name">Inspection Expiration Warning</field>
+            <field name="model_id" ref="model_inspection_inspection"/>
+            <field name="subject">Action Required: Inspection Expiring Soon - {{ object.name }}</field>
+            <field name="email_from">{{ object.company_id.email or 'noreply@yourcompany.com' }}</field>
+            <field name="email_to">{{ object.customer_id.email }}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Dear<t t-out="object.customer_id.name"/>,
+                        <br/>
+                        <br/>
+                        This is a reminder that the inspection certificate for your machine is expiring soon.
+                        <br/>
+                        <br/>
+                        <strong>Machine:</strong>
+                        <t t-out="object.machine_id.name"/>
+                        (<t t-out="object.machine_id.serial_number"/>)
+                        <br/>
+                        <strong>Current Certificate:</strong>
+                        <t t-out="object.name"/>
+                        <br/>
+                        <strong style="color: red;">Expires On:</strong>
+                        <t t-out="object.expire_date"/>
+                        <br/>
+                        <br/>
+                        Please login to your portal to request a new inspection or contact us directly.
+                        <br/>
+                        <br/>
+                        <a t-att-href="object.get_base_url() + '/my/machines/' + str(object.machine_id.id)"
+                           style="background-color: #875A7B; padding: 8px 16px; text-decoration: none; color: #fff; border-radius: 5px;">
+                            Request Renewal
+                        </a>
+                        <br/>
+                        <br/>
+                        Best regards,
+                        <br/>
+                        The Certification Team
+                    </p>
+                </div>
+            </field>
+        </record>
+
+        <record id="ir_cron_inspection_expiration_reminder" model="ir.cron">
+            <field name="name">Inspection: Expiration Reminders (Daily)</field>
+            <field name="model_id" ref="model_inspection_inspection"/>
+            <field name="state">code</field>
+            <field name="code">model.action_send_expiration_reminders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+        </record>
+
+        <record id="ir_cron_generate_inspections" model="ir.cron">
+            <field name="name">Inspection: Generate Recurring Subscriptions</field>
+            <field name="model_id" ref="model_inspection_machine"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_generate_recurring_inspections()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+        </record>
+
+    </data>
+</odoo>

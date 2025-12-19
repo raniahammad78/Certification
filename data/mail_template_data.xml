@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="email_template_inspection_request" model="mail.template">
+            <field name="name">Inspection Request Notification</field>
+            <field name="model_id" ref="model_inspection_inspection"/>
+            <field name="subject">New Inspection Request: {{ object.machine_id.name }}</field>
+
+            <field name="email_to">{{ object.company_id.email }}</field>
+
+            <field name="email_from">{{ object.customer_id.email_formatted }}</field>
+
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Hello Team,
+                        <br/>
+                        <br/>
+                        A new inspection has been requested by
+                        <strong>
+                            <t t-out="object.customer_id.name"/>
+                        </strong>
+                        via the Customer Portal.
+                        <br/>
+                        <br/>
+                        <strong>Machine Details:</strong>
+                        <ul>
+                            <li>
+                                <strong>Name:</strong>
+                                <t t-out="object.machine_id.name"/>
+                            </li>
+                            <li>
+                                <strong>Serial Number:</strong>
+                                <t t-out="object.machine_id.serial_number"/>
+                            </li>
+                            <li>
+                                <strong>Model:</strong>
+                                <t t-out="object.machine_id.model_no"/>
+                            </li>
+                        </ul>
+                        <br/>
+                        A draft inspection
+                        <strong>
+                            <t t-out="object.name"/>
+                        </strong>
+                        has been created automatically.
+                        <br/>
+                        <br/>
+                        <div style="margin: 16px 0px 16px 0px;">
+                            <a t-att-href="object.get_base_url() + '/web#id=' + str(object.id) + '&amp;model=inspection.inspection&amp;view_type=form'"
+                               style="background-color: #875A7B; padding: 8px 16px; text-decoration: none; color: #fff; border-radius: 5px; font-size:13px;">
+                                Review Request
+                            </a>
+                        </div>
+                        <br/>
+                        Best regards,
+                        <br/>
+                        <t t-out="object.customer_id.name"/>
+                    </p>
+                </div>
+            </field>
+        </record>
+
+    </data>
+</odoo>
