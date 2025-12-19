@@ -279,6 +279,16 @@
     <template id="portal_my_inspections" name="My Inspections">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <!-- Success Message -->
+            <div t-if="success_message" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                <i class="fa fa-check-circle me-2"/>
+                <strong>
+                    <t t-esc="success_message"/>
+                </strong>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
             <div class="card border-0 shadow-sm rounded-3 mt-3">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
@@ -288,7 +298,8 @@
                                 <th>Machine</th>
                                 <th>Date</th>
                                 <th>Status</th>
-                                <th class="text-end pe-4">Certificate</th>
+                                <th>Signature</th>
+                                <th class="text-end pe-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -313,13 +324,40 @@
                                     <span t-if="insp.status == 'draft'" class="badge bg-warning text-dark">Pending
                                     </span>
                                 </td>
+                                <td>
+                                    <span t-if="insp.is_signed" class="badge bg-success">
+                                        <i class="fa fa-check me-1"/>Signed
+                                    </span>
+                                    <span t-else="" class="badge bg-secondary">
+                                        <i class="fa fa-clock-o me-1"/>Not Signed
+                                    </span>
+                                </td>
                                 <td class="text-end pe-4">
-                                    <a t-if="insp.status == 'passed'"
-                                       t-attf-href="/report/pdf/certification.action_report_certificate/#{insp.id}"
-                                       class="btn btn-sm btn-primary shadow-sm">
-                                        <i class="fa fa-download me-1"/>
-                                        Download
-                                    </a>
+                                    <div class="btn-group">
+                                        <!-- Sign Button -->
+                                        <a t-if="insp.status == 'passed' and not insp.is_signed"
+                                           t-attf-href="/inspection/sign/#{insp.id}"
+                                           class="btn btn-sm btn-warning"
+                                           title="Sign Certificate">
+                                            <i class="fa fa-pencil me-1"/>Sign
+                                        </a>
+
+                                        <!-- Download Certificate -->
+                                        <a t-if="insp.status == 'passed'"
+                                           t-attf-href="/report/pdf/certification.action_report_certificate/#{insp.id}"
+                                           class="btn btn-sm btn-primary shadow-sm"
+                                           title="Download PDF">
+                                            <i class="fa fa-download"/>
+                                        </a>
+
+                                        <!-- Download QR -->
+                                        <a t-if="insp.status == 'passed'"
+                                           t-attf-href="/inspection/qr_download/#{insp.id}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="Download QR Code">
+                                            <i class="fa fa-qrcode"/>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -447,6 +485,218 @@
                     </div>
                 </div>
             </div>
+        </t>
+    </template>
+
+    <!-- Signature Page Template -->
+    <template id="inspection_signature_page" name="Sign Inspection Certificate">
+        <t t-call="portal.portal_layout">
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card shadow-lg border-0">
+                            <div class="card-header bg-primary text-white text-center py-4">
+                                <h3 class="mb-0">
+                                    <i class="fa fa-pencil me-2"/>Certificate Signature
+                                </h3>
+                            </div>
+
+                            <div class="card-body p-4">
+                                <div class="alert alert-info mb-4">
+                                    <i class="fa fa-info-circle me-2"/>
+                                    <strong>Please sign below to confirm receipt and acceptance of this inspection
+                                        certificate.
+                                    </strong>
+                                </div>
+
+                                <!-- Inspection Details -->
+                                <div class="mb-4 p-3 bg-light rounded">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Reference:</strong>
+                                            <t t-esc="inspection.name"/>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Machine:</strong>
+                                            <t t-esc="inspection.machine_id.name"/>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Inspection Date:</strong>
+                                            <t t-esc="inspection.start_date"/>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Status:</strong>
+                                            <span t-if="inspection.status == 'passed'" class="badge bg-success">Passed
+                                            </span>
+                                            <span t-if="inspection.status == 'failed'" class="badge bg-danger">Failed
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Signature Canvas -->
+                                <form t-attf-action="/inspection/sign/submit/#{inspection.id}" method="post"
+                                      id="signatureForm">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <input type="hidden" name="signature" id="signatureInput"/>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold">Your Signature:</label>
+                                        <div class="border rounded" style="background-color: #f8f9fa;">
+                                            <canvas id="signatureCanvas"
+                                                    width="700"
+                                                    height="200"
+                                                    style="width: 100%; height: 200px; cursor: crosshair; display: block;">
+                                            </canvas>
+                                        </div>
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    id="clearSignature">
+                                                <i class="fa fa-eraser me-1"/>Clear Signature
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold">Full Name:</label>
+                                        <input type="text"
+                                               class="form-control"
+                                               name="signer_name"
+                                               t-att-value="request.env.user.name"
+                                               readonly="1"/>
+                                    </div>
+
+                                    <div class="alert alert-warning" t-if="request.params.get('error')">
+                                        <i class="fa fa-exclamation-triangle me-2"/>
+                                        <strong>Error:</strong>
+                                        Please draw your signature before submitting.
+                                    </div>
+
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg" id="submitSignature">
+                                            <i class="fa fa-check me-2"/>Submit Signature
+                                        </button>
+                                        <a t-attf-href="/my/inspections" class="btn btn-outline-secondary">
+                                            <i class="fa fa-arrow-left me-2"/>Back to Inspections
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signature Canvas JavaScript -->
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function() {
+                const canvas = document.getElementById('signatureCanvas');
+                const ctx = canvas.getContext('2d');
+                let isDrawing = false;
+                let lastX = 0;
+                let lastY = 0;
+
+                canvas.width = 700;
+                canvas.height = 200;
+
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                function getPosition(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+
+                if (e.touches) {
+                return {
+                x: (e.touches[0].clientX - rect.left) * scaleX,
+                y: (e.touches[0].clientY - rect.top) * scaleY
+                };
+                }
+                return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+                };
+                }
+
+                canvas.addEventListener('mousedown', function(e) {
+                isDrawing = true;
+                const pos = getPosition(e);
+                lastX = pos.x;
+                lastY = pos.y;
+                });
+
+                canvas.addEventListener('mousemove', function(e) {
+                if (!isDrawing) return;
+                const pos = getPosition(e);
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+
+                lastX = pos.x;
+                lastY = pos.y;
+                });
+
+                canvas.addEventListener('mouseup', function() {
+                isDrawing = false;
+                });
+
+                canvas.addEventListener('mouseout', function() {
+                isDrawing = false;
+                });
+
+                canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                isDrawing = true;
+                const pos = getPosition(e);
+                lastX = pos.x;
+                lastY = pos.y;
+                });
+
+                canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const pos = getPosition(e);
+
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+
+                lastX = pos.x;
+                lastY = pos.y;
+                });
+
+                canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                isDrawing = false;
+                });
+
+                document.getElementById('clearSignature').addEventListener('click', function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                });
+
+                document.getElementById('signatureForm').addEventListener('submit', function(e) {
+                const signatureData = canvas.toDataURL('image/png');
+
+                const blankCanvas = document.createElement('canvas');
+                blankCanvas.width = canvas.width;
+                blankCanvas.height = canvas.height;
+
+                if (canvas.toDataURL() === blankCanvas.toDataURL()) {
+                e.preventDefault();
+                alert('Please draw your signature before submitting.');
+                return false;
+                }
+
+                document.getElementById('signatureInput').value = signatureData;
+                });
+                });
+            </script>
         </t>
     </template>
 
