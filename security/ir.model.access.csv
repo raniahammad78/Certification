@@ -20,3 +20,5 @@ access_portal_attachment_read,ir.attachment.portal.read,base.model_ir_attachment
 access_portal_attachment_create,ir.attachment.portal.create,base.model_ir_attachment,base.group_portal,1,1,1,0
 access_portal_partner_read,res.partner.portal.read,base.model_res_partner,base.group_portal,1,0,0,0
 access_portal_company_read,res.company.portal.read,base.model_res_company,base.group_portal,1,0,0,0
+access_inspection_document_user,inspection.document.user,model_inspection_document,base.group_user,1,1,1,1
+access_inspection_document_portal,inspection.document.portal,model_inspection_document,base.group_portal,1,0,0,0
