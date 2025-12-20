@@ -51,6 +51,14 @@ class InspectionInspection(models.Model):
 
     location_site = fields.Char(string="Location of Inspection")
 
+    # -------------------------------------------------------------------------
+    #  GPS Field
+    # -------------------------------------------------------------------------
+    gps_coordinates = fields.Char(
+        string="GPS Location URL",
+        help="Paste a Google Maps link (must contain 'google')"
+    )
+
     doc_report = fields.Boolean(string="Previous Inspection Report", default=True)
     doc_maintenance = fields.Boolean(string="Maintenance Record", default=True)
     doc_load_chart = fields.Boolean(string="Load Chart", default=True)
@@ -66,9 +74,37 @@ class InspectionInspection(models.Model):
     qr_code_url = fields.Char(compute='_compute_qr_code_url', string="QR URL")
     qr_image = fields.Binary(string="QR Code Image", compute='_compute_qr_image')
 
+    # Assigned Inspector
+    inspector_id = fields.Many2one('res.users', string="Assigned Inspector", default=lambda self: self.env.user)
+
     # -------------------------------------------------------------------------
-    # CONSTRAINTS & COMPUTES
+    # CONSTRAINT: SMART GOOGLE VALIDATION (Accepts App Short Links)
     # -------------------------------------------------------------------------
+    @api.constrains('gps_coordinates')
+    def _check_gps_coordinates(self):
+        for rec in self:
+            if rec.gps_coordinates:
+                # 1. Clean the input
+                url = rec.gps_coordinates.strip().lower()
+
+                # 2. Check for "google" OR the short link format "goo.gl"
+                # This accepts:
+                # - https://maps.app.goo.gl/pD9cR... (Mobile App Share)
+                # - http://googleusercontent.com/... (Desktop)
+                # - https://www.google.com/maps/... (Standard)
+
+                if "google" not in url and "goo.gl" not in url:
+                    raise ValidationError("Invalid Link! Please enter a valid Google Maps URL.")
+
+    # 3. Action to Open Map
+    def action_open_map(self):
+        self.ensure_one()
+        url = self.gps_coordinates.strip() if self.gps_coordinates else "http://googleusercontent.com/maps.google.com/"
+        return {
+            'type': 'ir.actions.act_url',
+            'url': url,
+            'target': 'new',
+        }
 
     @api.constrains('start_date', 'expire_date')
     def _check_dates(self):
@@ -117,13 +153,22 @@ class InspectionInspection(models.Model):
 
         recent_inspections = self.search_read(
             domain=[],
-            fields=['name', 'machine_id', 'status', 'start_date', 'signed_by', 'signed_date'],
+            fields=['name', 'machine_id', 'status', 'start_date', 'signed_by', 'signed_date', 'customer_id',
+                    'inspector_id'],
             limit=5,
             order='create_date desc'
         )
         for insp in recent_inspections:
             if insp['machine_id']:
                 insp['machine_name'] = insp['machine_id'][1]
+            if insp['customer_id']:
+                insp['customer_name'] = insp['customer_id'][1]
+            else:
+                insp['customer_name'] = 'N/A'
+            if insp['inspector_id']:
+                insp['inspector_name'] = insp['inspector_id'][1]
+            else:
+                insp['inspector_name'] = 'Unassigned'
 
         today = fields.Date.today()
         next_30_days = today + relativedelta(days=30)
@@ -263,11 +308,19 @@ class InspectionInspection(models.Model):
     # ACTION METHODS
     # -------------------------------------------------------------------------
 
-    def action_pass(self):
-        """Mark inspection as passed and generate certificate PDF"""
-        self.write({'status': 'passed'})
+    # NEW: Map Button Action
+    def action_open_map(self):
+        self.ensure_one()
+        # Clean the URL before opening
+        url = self.gps_coordinates.strip() if self.gps_coordinates else "http://googleusercontent.com/maps.google.com/"
+        return {
+            'type': 'ir.actions.act_url',
+            'url': url,
+            'target': 'new',
+        }
 
-        # Generate PDF certificate
+    def action_pass(self):
+        self.write({'status': 'passed'})
         try:
             report = self.env.ref('certification.action_report_certificate')
             pdf_content, _ = report._render_qweb_pdf(self.id)
@@ -283,7 +336,6 @@ class InspectionInspection(models.Model):
             _logger.info(f"Certificate PDF generated successfully for inspection {self.name}")
         except Exception as e:
             _logger.error(f"Failed to generate certificate PDF for inspection {self.name}: {e}")
-
         return True
 
     def action_fail(self):
@@ -362,3 +414,98 @@ class InspectionInspectionImage(models.Model):
     name = fields.Char(string="Name")
     image = fields.Image(string="Photo", max_width=1024, max_height=1024)
     description = fields.Char(string="Description")
+
+
+# -------------------------------------------------------------------------
+# CUSTOMER PORTAL EXTENSIONS (Docs, Invoices, Payment Status)
+# -------------------------------------------------------------------------
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+    inspection_document_ids = fields.One2many(
+        'inspection.document', 'partner_id', string="Portal Documents"
+    )
+
+    unpaid_document_count = fields.Integer(
+        string="Unpaid Docs",
+        compute='_compute_unpaid_document_count'
+    )
+
+    @api.depends('inspection_document_ids.payment_status')
+    def _compute_unpaid_document_count(self):
+        for partner in self:
+            count = self.env['inspection.document'].search_count([
+                ('partner_id', '=', partner.id),
+                ('payment_status', '!=', 'paid')
+            ])
+            partner.unpaid_document_count = count
+
+
+class InspectionDocument(models.Model):
+    _name = 'inspection.document'
+    _description = 'Customer Portal Document'
+    _order = 'upload_date desc'
+
+    name = fields.Char(string="Description", required=True)
+    file = fields.Binary(string="File", required=True, attachment=True)
+    file_name = fields.Char(string="Filename")
+    partner_id = fields.Many2one('res.partner', string="Customer")
+    upload_date = fields.Date(string="Date", default=fields.Date.today)
+
+    # Link to Invoice
+    invoice_id = fields.Many2one('account.move', string="Linked Invoice",
+                                 domain="[('partner_id', '=', partner_id), ('move_type', '=', 'out_invoice')]")
+
+    # Payment Status (Computed & Editable)
+    payment_status = fields.Selection([
+        ('unpaid', 'Unpaid'),
+        ('partial', 'Partially Paid'),
+        ('paid', 'Paid')
+    ], string="Payment Status", compute='_compute_payment_status', store=True, readonly=False)
+
+    @api.depends('invoice_id', 'invoice_id.payment_state')
+    def _compute_payment_status(self):
+        for doc in self:
+            if doc.invoice_id:
+                state = doc.invoice_id.payment_state
+                if state in ('paid', 'in_payment'):
+                    doc.payment_status = 'paid'
+                elif state == 'partial':
+                    doc.payment_status = 'partial'
+                else:
+                    doc.payment_status = 'unpaid'
+
+    @api.model
+    def create(self, vals):
+        doc = super(InspectionDocument, self).create(vals)
+        if doc.partner_id and doc.partner_id.email:
+            try:
+                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                doc_url = f"{base_url}/my/documents"
+
+                subject = f"New Document Shared: {doc.name}"
+                body_html = f"""
+                    <div style="font-family: Arial, sans-serif; color: #333;">
+                        <p>Hello <strong>{doc.partner_id.name}</strong>,</p>
+                        <p>A new document has been shared with you in your portal.</p>
+                        <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00A09D; margin: 15px 0;">
+                            <p style="margin: 0;"><strong>Document:</strong> {doc.name}</p>
+                            <p style="margin: 5px 0 0 0;"><strong>Date:</strong> {doc.upload_date}</p>
+                        </div>
+                        <p>You can access and download this file by logging into your portal:</p>
+                        <a href="{doc_url}" style="background-color: #00A09D; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Documents</a>
+                        <p style="margin-top: 20px; font-size: 12px; color: #777;">Thank you,<br/>Inspection Team</p>
+                    </div>
+                """
+
+                self.env['mail.mail'].create({
+                    'subject': subject,
+                    'body_html': body_html,
+                    'email_to': doc.partner_id.email,
+                    'email_from': self.env.user.email_formatted or self.env.company.email,
+                    'auto_delete': True,
+                }).send()
+            except Exception as e:
+                _logger.error(f"Failed to send document upload email: {e}")
+        return doc

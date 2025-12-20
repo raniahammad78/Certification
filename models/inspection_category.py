@@ -11,13 +11,13 @@ class InspectionCategory(models.Model):
     # CHANGED: 'Text' -> 'Char' allows Grouping and fixes "False" in Kanban
     standard = fields.Char(string="Standard")
 
-    # NEW: Required for Kanban Color Picker
+    # Required for Kanban Color Picker
     color = fields.Integer(string='Color Index')
 
     question_ids = fields.One2many('inspection.question', 'category_id', string="Standard Checklist")
     inspection_ids = fields.One2many('inspection.inspection', 'category_id', string="Inspections")
 
-    # NEW: Link to machines for Smart Button
+    #  Link to machines for Smart Button
     machine_ids = fields.One2many('inspection.machine', 'category_id', string="Machines")
 
     inspection_count = fields.Integer(string="Inspection Count", compute='_compute_counts')
