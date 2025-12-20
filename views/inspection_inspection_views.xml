@@ -14,7 +14,7 @@
         <field name="arch" type="xml">
             <gantt date_start="start_date"
                    date_stop="expire_date"
-                   default_group_by="inspector_name"
+                   default_group_by="inspector_id"
                    default_scale="month"
                    color="status"
                    string="Inspection Schedule"
@@ -118,6 +118,7 @@
                 <field name="customer_id"/>
                 <field name="status"/>
                 <field name="start_date"/>
+                <field name="inspector_id"/>
                 <progressbar field="status" colors='{"passed": "success", "failed": "danger", "draft": "warning"}'/>
                 <templates>
                     <t t-name="kanban-box">
@@ -153,9 +154,14 @@
                                     <i class="fa fa-calendar"/>
                                     <field name="start_date"/>
                                 </div>
-                                <div class="oe_kanban_bottom_right mt-2">
-                                    <field name="status" widget="label_selection"
-                                           options="{'classes': {'passed': 'success', 'failed': 'danger', 'draft': 'warning'}}"/>
+                                <div class="o_kanban_record_bottom mt-2">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="inspector_id" widget="many2one_avatar_user"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="status" widget="label_selection"
+                                               options="{'classes': {'passed': 'success', 'failed': 'danger', 'draft': 'warning'}}"/>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -171,11 +177,17 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name"/>
+                <field name="inspector_id"/>
                 <field name="machine_id"/>
                 <field name="customer_id"/>
+
+                <filter string="My Inspections" name="my_inspections" domain="[('inspector_id', '=', uid)]"/>
+                <separator/>
                 <filter string="Passed" name="passed" domain="[('status', '=', 'passed')]"/>
                 <filter string="Failed" name="failed" domain="[('status', '=', 'failed')]"/>
+
                 <group expand="0" string="Group By">
+                    <filter string="Inspector" name="group_inspector" context="{'group_by': 'inspector_id'}"/>
                     <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
                     <filter string="Customer" name="group_customer" context="{'group_by': 'customer_id'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'start_date'}"/>
@@ -193,6 +205,7 @@
                 <field name="name"/>
                 <field name="customer_id"/>
                 <field name="machine_id"/>
+                <field name="inspector_id" widget="many2one_avatar_user"/>
                 <field name="start_date"/>
                 <field name="status" widget="badge" decoration-success="status == 'passed'"
                        decoration-danger="status == 'failed'"/>
@@ -212,7 +225,8 @@
                             invisible="status != 'draft'"/>
                     <button name="action_reset_draft" string="Reset to Draft" type="object"
                             invisible="status == 'draft'"/>
-                    <button name="%(action_report_certificate)d" string="Generate Certificate" type="action"
+                    <button name="%(certification.action_report_certificate)d" string="Generate Certificate"
+                            type="action"
                             class="btn-primary" icon="fa-print" invisible="status != 'passed'"/>
                     <button name="action_download_qr" string="Download QR" type="object" class="btn-secondary"
                             icon="fa-qrcode" invisible="not qr_image"/>
@@ -227,11 +241,18 @@
                     <group>
                         <group>
                             <field name="customer_id"/>
-                            <field name="location_site" placeholder="Site Address"/>
+                            <label for="gps_coordinates" string="GPS Location"/>
+                            <div class="o_row">
+                                <field name="gps_coordinates" placeholder="Paste Google Maps Link here..."/>
+                                <button name="action_open_map" type="object"
+                                        icon="fa-map-marker" string="Map"
+                                        class="btn btn-link pt-0 pb-0"/>
+                            </div>
                             <field name="machine_id"/>
                             <field name="category_id"/>
                         </group>
                         <group>
+                            <field name="inspector_id" widget="many2one_avatar_user"/>
                             <field name="start_date"/>
                             <field name="expire_date"/>
                             <field name="last_inspection_date"/>
@@ -245,14 +266,11 @@
                             <field name="doc_load_chart"/>
                         </group>
                         <group>
-                            <field name="inspector_name"/>
-
+                            <field name="inspector_name" placeholder="Name for Report (Optional)"/>
                             <field name="inspector_signature" widget="signature"/>
-
                             <field name="customer_signature" widget="signature" readonly="1"
                                    string="Customer Signature (From Portal)"/>
                             <field name="signed_by" readonly="1" invisible="not customer_signature"/>
-
                             <field name="qr_image" invisible="1"/>
                         </group>
                     </group>
@@ -268,6 +286,7 @@
                                     <field name="is_rejected"/>
                                     <field name="is_na"/>
                                     <field name="comment"/>
+                                    <field name="recommendation"/>
                                     <button name="get_formview_action" string="Photo" type="object" icon="fa-camera"/>
                                 </list>
                                 <form>
