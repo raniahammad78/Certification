@@ -5,7 +5,6 @@
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.basic_layout">
 
-                    <!-- PAGE WRAPPER -->
                     <div class="page"
                          style="font-family: 'Times New Roman', serif;
                                 color: black;
@@ -14,7 +13,6 @@
                                 padding: 0 !important;
                                 margin: 0 !important;">
 
-                        <!-- FIRST PAGE CONTENT -->
                         <div style="font-size: 19px;">
                             <div style="border: 4px solid black;
                                         padding: 0;
@@ -24,7 +22,6 @@
                                         flex-direction: column;
                                         box-sizing: border-box;">
 
-                                <!-- HEADER -->
                                 <div class="row m-0" style="border-bottom: 3px solid black; flex: 0 0 auto;">
                                     <div class="col-9 p-3">
                                         <h2 class="text-center"
@@ -51,11 +48,9 @@
                                     </div>
                                 </div>
 
-                                <!-- CLIENT + ITEM INFO -->
                                 <div class="row m-0"
                                      style="border-bottom: 3px solid black; flex: 0 0 auto;">
 
-                                    <!-- LEFT TABLE: CLIENT / INSPECTION -->
                                     <div class="col-6 p-0" style="border-right: 3px solid black;">
                                         <table class="table table-sm mb-0"
                                                style="width: 100%;
@@ -141,7 +136,6 @@
                                         </table>
                                     </div>
 
-                                    <!-- RIGHT TABLE: MACHINE INFO -->
                                     <div class="col-6 p-0">
                                         <table class="table table-sm mb-0"
                                                style="width: 100%;
@@ -215,7 +209,6 @@
                                     </div>
                                 </div>
 
-                                <!-- DOCUMENTS + STATUS -->
                                 <div class="row m-0"
                                      style="border-bottom: 3px solid black; flex: 0 0 auto;">
                                     <div class="col-6 p-3" style="border-right: 3px solid black;">
@@ -264,7 +257,6 @@
                                     </div>
                                 </div>
 
-                                <!-- SIGNATURES ROW -->
                                 <div class="row m-0" style="flex: 1;">
                                     <div class="col-6 p-3"
                                          style="border-right: 3px solid black;">
@@ -288,14 +280,30 @@
                                         <span t-field="o.start_date"/>
                                     </div>
                                     <div class="col-6 p-3" style="position: relative;">
-                                        <strong>Approved By:</strong>
-                                        <br/>
-                                        <br/>
-                                        <br/>
-                                        <div style="border-bottom: 2px solid black;
-                                                    width: 220px;
-                                                    margin-bottom: 5px;"></div>
-                                        <strong>Signature &amp; Stamp</strong>
+                                        <t t-if="o.customer_signature">
+                                            <strong>Customer Acceptance:</strong>
+                                            <br/>
+                                            <img t-att-src="image_data_uri(o.customer_signature)"
+                                                 style="max-height: 80px; max-width: 200px; border-bottom: 1px solid black;"/>
+                                            <br/>
+                                            <small>
+                                                Signed by:
+                                                <span t-field="o.signed_by"/>
+                                                <br/>
+                                                Date:
+                                                <span t-field="o.signed_date" t-options='{"widget": "date"}'/>
+                                            </small>
+                                        </t>
+                                        <t t-else="">
+                                            <strong>Approved By:</strong>
+                                            <br/>
+                                            <br/>
+                                            <br/>
+                                            <div style="border-bottom: 2px solid black;
+                                                        width: 220px;
+                                                        margin-bottom: 5px;"></div>
+                                            <strong>Signature &amp; Stamp</strong>
+                                        </t>
 
                                         <div t-if="o.status == 'passed'"
                                              style="position: absolute;
@@ -318,10 +326,8 @@
                             </div>
                         </div>
 
-                        <!-- PAGE BREAK TO SECOND PAGE -->
                         <div style="page-break-before: always;"></div>
 
-                        <!-- SECOND PAGE -->
                         <div style="font-size: 14px;">
                             <div class="row mb-3 mt-4">
                                 <div class="col-12 text-center">
@@ -364,48 +370,74 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr t-foreach="o.line_ids" t-as="line">
-                                        <td class="text-center"
-                                            style="border: 1px solid black; padding: 5px;">
-                                            <t t-if="line.section">
-                                                <b>
-                                                    <t t-esc="line.section"/>
-                                                </b>
+                                    <t t-foreach="o.line_ids" t-as="line">
+                                        <tr>
+                                            <td class="text-center"
+                                                style="border: 1px solid black; padding: 5px;">
+                                                <t t-if="line.section">
+                                                    <b>
+                                                        <t t-esc="line.section"/>
+                                                    </b>
+                                                    <br/>
+                                                </t>
+                                                <span t-field="line.serial_no"/>
+                                            </td>
+                                            <td style="border: 1px solid black; padding: 5px;">
+                                                <span t-field="line.name"/>
+                                            </td>
+                                            <td class="text-center"
+                                                style="border: 1px solid black; padding: 5px;">
+                                                <span t-if="line.is_accepted"
+                                                      style="font-family: DejaVu Sans;
+                                                             font-size: 18px;
+                                                             font-weight: bold;">
+                                                    &#10004;
+                                                </span>
+                                            </td>
+                                            <td class="text-center"
+                                                style="border: 1px solid black; padding: 5px;">
+                                                <span t-if="line.is_rejected"
+                                                      style="font-family: DejaVu Sans;
+                                                             font-size: 18px;
+                                                             font-weight: bold;">
+                                                    &#10008;
+                                                </span>
+                                            </td>
+                                            <td class="text-center"
+                                                style="border: 1px solid black; padding: 5px;">
+                                                <span t-if="line.is_na"
+                                                      style="font-weight: bold; font-size: 16px;">X
+                                                </span>
+                                            </td>
+                                            <td style="border: 1px solid black; padding: 5px;">
+                                                <span t-field="line.comment"/>
+                                                <t t-if="line.recommendation">
+                                                    <br/>
+                                                    <strong>Rec:</strong>
+                                                    <span t-field="line.recommendation" style="font-style: italic;"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr t-if="line.image_ids">
+                                            <td colspan="6"
+                                                style="border: 1px solid black; padding: 5px; background-color: #f9f9f9;">
+                                                <strong>Evidence Photos:</strong>
                                                 <br/>
-                                            </t>
-                                            <span t-field="line.serial_no"/>
-                                        </td>
-                                        <td style="border: 1px solid black; padding: 5px;">
-                                            <span t-field="line.name"/>
-                                        </td>
-                                        <td class="text-center"
-                                            style="border: 1px solid black; padding: 5px;">
-                                            <span t-if="line.is_accepted"
-                                                  style="font-family: DejaVu Sans;
-                                                         font-size: 18px;
-                                                         font-weight: bold;">
-                                                &#10004;
-                                            </span>
-                                        </td>
-                                        <td class="text-center"
-                                            style="border: 1px solid black; padding: 5px;">
-                                            <span t-if="line.is_rejected"
-                                                  style="font-family: DejaVu Sans;
-                                                         font-size: 18px;
-                                                         font-weight: bold;">
-                                                &#10008;
-                                            </span>
-                                        </td>
-                                        <td class="text-center"
-                                            style="border: 1px solid black; padding: 5px;">
-                                            <span t-if="line.is_na"
-                                                  style="font-weight: bold; font-size: 16px;">X
-                                            </span>
-                                        </td>
-                                        <td style="border: 1px solid black; padding: 5px;">
-                                            <span t-field="line.comment"/>
-                                        </td>
-                                    </tr>
+                                                <div style="display: flex; flex-wrap: wrap;">
+                                                    <t t-foreach="line.image_ids" t-as="photo">
+                                                        <div style="margin: 5px; text-align: center;">
+                                                            <img t-att-src="image_data_uri(photo.image)"
+                                                                 style="max-height: 120px; border: 1px solid #ccc; padding: 2px;"/>
+                                                            <div t-if="photo.description"
+                                                                 style="font-size: 10px; color: #555;">
+                                                                <t t-esc="photo.description"/>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </t>
                                 </tbody>
                             </table>
                         </div>
