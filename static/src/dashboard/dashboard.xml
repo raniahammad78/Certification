@@ -136,6 +136,8 @@
                                             <th>Date</th>
                                             <th>Ref</th>
                                             <th>Machine</th>
+                                            <th>Customer</th>
+                                            <th>Inspector</th>
                                             <th class="text-end">Status</th>
                                         </tr>
                                     </thead>
@@ -150,6 +152,12 @@
                                             </td>
                                             <td>
                                                 <t t-esc="insp.machine_name"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="insp.customer_name"/>
+                                            </td>
+                                            <td>
+                                                <t t-esc="insp.inspector_name"/>
                                             </td>
                                             <td class="text-end">
                                                 <span t-if="insp.status == 'passed'">
