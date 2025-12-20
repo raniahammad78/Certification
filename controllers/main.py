@@ -19,77 +19,68 @@ class InspectionController(http.Controller):
             return request.render('http_routing.404')
         return request.render('certification.public_inspection_view', {'inspection': inspection})
 
-    # NEW: PUBLIC MACHINE INFO (No Login Required)
+    # 2. PUBLIC MACHINE INFO
     @http.route('/machine/info/<int:machine_id>', type='http', auth='public', website=True)
     def view_public_machine(self, machine_id, **kwargs):
-        _logger.info(f"Public user scanning QR for Machine ID: {machine_id}")
-
-        # Use sudo() to allow public access to the record
         machine = request.env['inspection.machine'].sudo().browse(machine_id)
-
         if not machine.exists():
             return request.render('http_routing.404')
-
-        # Render the new public template
         return request.render('certification.public_machine_info', {'machine': machine})
 
-    # 2. DOWNLOAD QR CODE
-    @http.route('/inspection/qr_download/<int:inspection_id>', type='http', auth='public', website=True)
+    # 3. DOWNLOAD QR CODE
+    @http.route('/inspection/qr_download/<int:inspection_id>', type='http', auth='user', website=True)
     def download_qr_code(self, inspection_id, **kwargs):
-        """Download QR code image for an inspection"""
         inspection = request.env['inspection.inspection'].sudo().browse(inspection_id)
 
-        # Check if inspection exists
-        if not inspection.exists():
-            _logger.warning(f"Inspection {inspection_id} not found")
+        if not inspection.exists() or not inspection.qr_image:
             return request.not_found()
 
-        # Check if QR image exists
-        if not inspection.qr_image:
-            _logger.warning(f"QR image not found for inspection {inspection_id}")
+        user = request.env.user
+        is_internal = user.has_group('base.group_user')
+        is_customer = inspection.customer_id == user.partner_id
+
+        if not (is_internal or is_customer):
             return request.not_found()
 
-        try:
-            # Decode base64 image
-            image_content = base64.b64decode(inspection.qr_image)
+        image_content = base64.b64decode(inspection.qr_image)
+        safe_name = (inspection.name or str(inspection.id)).replace('/', '_')
+        return request.make_response(
+            image_content,
+            headers=[
+                ('Content-Type', 'image/png'),
+                ('Content-Disposition', f'attachment; filename=QR_{safe_name}.png')
+            ]
+        )
 
-            # Create safe filename
-            safe_name = (inspection.name or str(inspection.id)).replace('/', '_').replace(' ', '_')
-            filename = f'QR_{safe_name}.png'
+    # 4. DIGITAL SIGNATURE (FIXED JS INTERACTION)
+    @http.route('/inspection/sign/<int:inspection_id>', type='json', auth='user', website=True)
+    def sign_inspection(self, inspection_id, name=None, signature=None, access_token=None, **kwargs):
+        # **kwargs is CRITICAL here. The JS widget often sends extra parameters.
+        # If we don't accept them, the code crashes and the spinner spins forever.
 
-            _logger.info(f"Downloading QR code for inspection {inspection_id}: {filename}")
-
-            return request.make_response(
-                image_content,
-                headers=[
-                    ('Content-Type', 'image/png'),
-                    ('Content-Disposition', f'attachment; filename="{filename}"'),
-                    ('Content-Length', len(image_content))
-                ]
-            )
-        except Exception as e:
-            _logger.error(f"Error downloading QR code for inspection {inspection_id}: {str(e)}")
-            return request.not_found()
-
-    # 3. DIGITAL SIGNATURE
-    @http.route('/inspection/sign/<int:inspection_id>', type='http', auth='user', methods=['POST'], website=True)
-    def sign_inspection(self, inspection_id, **kwargs):
         inspection = request.env['inspection.inspection'].sudo().browse(inspection_id)
 
-        if inspection.customer_id != request.env.user.partner_id:
-            return request.redirect('/my/machines')
+        # Security Check
+        user = request.env.user
+        if inspection.customer_id != user.partner_id and not user.has_group('base.group_user'):
+            return {'error': _('You are not authorized to sign this document.')}
 
-        signature_data = kwargs.get('signature_data')
-        signer_name = kwargs.get('signer_name')
+        if signature:
+            # Strip the header from the image data
+            if ',' in signature:
+                signature = signature.split(',')[1]
 
-        if signature_data:
+            # Use SUDO to force the write, even if record rules are strict
             inspection.sudo().write({
-                'customer_signature': signature_data,
-                'signed_by': signer_name or request.env.user.name,
+                'customer_signature': signature,
+                'signed_by': name or user.name,
                 'signed_date': datetime.now()
             })
 
-        return request.redirect(f'/my/machines/{inspection.machine_id.id}?msg=signed')
+        return {
+            'force_refresh': True,
+            'redirect_url': f'/inspection/view/{inspection.id}',
+        }
 
 
 class MachineCustomerPortal(CustomerPortal):
@@ -99,14 +90,18 @@ class MachineCustomerPortal(CustomerPortal):
         values = super()._prepare_home_portal_values(counters)
         partner = request.env.user.partner_id
 
-        # Add machine and inspection counts
-        values['machine_count'] = request.env['inspection.machine'].sudo().search_count([
-            ('partner_id', '=', partner.id)
-        ])
+        if 'machine_count' in counters:
+            values['machine_count'] = request.env['inspection.machine'].search_count([
+                ('partner_id', '=', partner.id)
+            ])
+        if 'inspection_count' in counters:
+            values['inspection_count'] = request.env['inspection.inspection'].search_count([
+                ('customer_id', '=', partner.id)
+            ])
+        # DOCUMENTS COUNTER
+        if 'document_count' in counters:
+            values['document_count'] = len(partner.inspection_document_ids)
 
-        values['inspection_count'] = request.env['inspection.inspection'].sudo().search_count([
-            ('customer_id', '=', partner.id)
-        ])
         return values
 
     # 2. MY MACHINES LIST
@@ -114,7 +109,7 @@ class MachineCustomerPortal(CustomerPortal):
     def portal_my_machines(self, page=1, sortby=None, **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
-        Machine = request.env['inspection.machine'].sudo()
+        Machine = request.env['inspection.machine']
         domain = [('partner_id', '=', partner.id)]
 
         machine_count = Machine.search_count(domain)
@@ -132,9 +127,7 @@ class MachineCustomerPortal(CustomerPortal):
     # 3. MACHINE DETAIL
     @http.route(['/my/machines/<int:machine_id>'], type='http', auth="user", website=True)
     def portal_my_machine_detail(self, machine_id, **kw):
-        machine = request.env['inspection.machine'].sudo().browse(machine_id)
-
-        # Security check
+        machine = request.env['inspection.machine'].browse(machine_id)
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
@@ -149,20 +142,16 @@ class MachineCustomerPortal(CustomerPortal):
             'logs': logs,
         })
 
-    # 4. REQUEST INSPECTION (With Note & Email)
+    # 4. REQUEST INSPECTION
     @http.route('/my/machines/<int:machine_id>/request_inspection', type='http', auth="user", methods=['POST'],
                 website=True)
     def request_inspection(self, machine_id, **kwargs):
-        machine = request.env['inspection.machine'].sudo().browse(machine_id)
-
-        # Security check
+        machine = request.env['inspection.machine'].browse(machine_id)
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
-        # Get Note
         customer_note = kwargs.get('request_note')
 
-        # A. Create Record
         new_inspection = request.env['inspection.inspection'].sudo().create({
             'machine_id': machine.id,
             'customer_id': machine.partner_id.id,
@@ -172,7 +161,6 @@ class MachineCustomerPortal(CustomerPortal):
             'company_id': request.env.company.id,
         })
 
-        # B. Post Note to Chatter
         if customer_note:
             new_inspection.message_post(
                 body=f"<strong>Customer Note:</strong> {customer_note}",
@@ -180,7 +168,6 @@ class MachineCustomerPortal(CustomerPortal):
                 author_id=machine.partner_id.id
             )
 
-        # C. Send Email
         template = request.env.ref('certification.email_template_inspection_request', raise_if_not_found=False)
         if template:
             template.sudo().send_mail(new_inspection.id, force_send=True)
@@ -190,9 +177,7 @@ class MachineCustomerPortal(CustomerPortal):
     # 5. UPLOAD LOG
     @http.route('/my/machines/<int:machine_id>/upload_log', type='http', auth="user", methods=['POST'], website=True)
     def upload_maintenance_log(self, machine_id, **kwargs):
-        machine = request.env['inspection.machine'].sudo().browse(machine_id)
-
-        # Security check
+        machine = request.env['inspection.machine'].browse(machine_id)
         if machine.partner_id != request.env.user.partner_id:
             return request.redirect('/my/machines')
 
@@ -214,7 +199,7 @@ class MachineCustomerPortal(CustomerPortal):
     def portal_my_inspections(self, page=1, sortby=None, **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
-        Inspection = request.env['inspection.inspection'].sudo()
+        Inspection = request.env['inspection.inspection']
         domain = [('customer_id', '=', partner.id)]
 
         searchbar_sortings = {
@@ -237,3 +222,34 @@ class MachineCustomerPortal(CustomerPortal):
             'sortby': sortby,
         })
         return request.render("certification.portal_my_inspections", values)
+
+    # 7. PORTAL DOCUMENTS LIST
+    @http.route(['/my/documents', '/my/documents/page/<int:page>'], type='http', auth="user", website=True)
+    def portal_my_documents(self, page=1, sortby=None, **kw):
+        values = self._prepare_portal_layout_values()
+        partner = request.env.user.partner_id
+        documents = partner.inspection_document_ids
+        pager = portal_pager(url="/my/documents", total=len(documents), page=page, step=15)
+        docs_paged = documents[pager['offset']:pager['offset'] + 15]
+
+        values.update({
+            'documents': docs_paged,
+            'page_name': 'document',
+            'pager': pager,
+            'default_url': '/my/documents',
+        })
+        return request.render("certification.portal_my_documents", values)
+
+    # 8. DOWNLOAD DOCUMENT
+    @http.route('/my/documents/download/<int:doc_id>', type='http', auth="user", website=True)
+    def download_portal_document(self, doc_id, **kw):
+        document = request.env['inspection.document'].sudo().browse(doc_id)
+        if document.partner_id != request.env.user.partner_id:
+            return request.not_found()
+        return request.make_response(
+            base64.b64decode(document.file),
+            headers=[
+                ('Content-Type', 'application/octet-stream'),
+                ('Content-Disposition', f'attachment; filename={document.file_name}')
+            ]
+        )
