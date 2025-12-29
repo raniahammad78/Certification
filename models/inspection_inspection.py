@@ -124,20 +124,25 @@ class InspectionInspection(models.Model):
     # -------------------------------------------------------------------------
     @api.model
     def get_dashboard_stats(self):
+        # 1. Calculate Basic KPIs
         total_insp = self.search_count([])
         passed = self.search_count([('status', '=', 'passed')])
         failed = self.search_count([('status', '=', 'failed')])
+
         Machine = self.env['inspection.machine']
         total_machines = Machine.search_count([])
+
         Category = self.env['inspection.category']
         total_categories = Category.search_count([])
 
+        # 2. Status Chart Data
         if total_insp == 0:
             status_data = [0, 0, 0]
         else:
             draft = total_insp - passed - failed
             status_data = [passed, failed, draft]
 
+        # 3. Machines by Category Chart
         machines_by_cat = Machine.read_group(domain=[], fields=['category_id'], groupby=['category_id'])
         cat_labels = []
         cat_data = []
@@ -151,6 +156,7 @@ class InspectionInspection(models.Model):
                 cat_labels.append('Uncategorized')
                 cat_data.append(count)
 
+        # 4. Recent Inspections List
         recent_inspections = self.search_read(
             domain=[],
             fields=['name', 'machine_id', 'status', 'start_date', 'signed_by', 'signed_date', 'customer_id',
@@ -165,12 +171,16 @@ class InspectionInspection(models.Model):
                 insp['customer_name'] = insp['customer_id'][1]
             else:
                 insp['customer_name'] = 'N/A'
+
+            # Handling Inspector Name
             if insp['inspector_id']:
                 insp['inspector_name'] = insp['inspector_id'][1]
             else:
                 insp['inspector_name'] = 'Unassigned'
 
+        # 5. Expiring Inspections List
         today = fields.Date.today()
+        # Ensure 'relativedelta' is imported at the top of your file: from dateutil.relativedelta import relativedelta
         next_30_days = today + relativedelta(days=30)
 
         expiring_inspections = self.search_read(
@@ -185,17 +195,63 @@ class InspectionInspection(models.Model):
             if exp['customer_id']:
                 exp['customer_name'] = exp['customer_id'][1]
 
+        # 6. INSPECTOR TRACKING (Added Section)
+        # ---------------------------------------------------------
+        users = self.env['res.users'].sudo().search([('share', '=', False)])
+        inspector_data = []
+
+        for user in users:
+            # Count Completed (Using 'inspector_id' to match your field name)
+            done_count = self.search_count([
+                ('inspector_id', '=', user.id),
+                ('status', 'in', ['passed', 'failed'])
+            ])
+
+            # Find Next Task (Using 'start_date' to match your field name)
+            next_task = self.search([
+                ('inspector_id', '=', user.id),
+                ('status', 'in', ['draft', 'pending'])
+            ], order='start_date asc', limit=1)
+
+            # Check if user has any activity
+            has_activity = self.search_count([('inspector_id', '=', user.id)]) > 0
+
+            if has_activity:
+                inspector_data.append({
+                    'id': user.id,
+                    'name': user.name,
+                    'done_count': done_count,
+                    'next_date': next_task.start_date if next_task and next_task.start_date else False,
+                    'next_machine': next_task.machine_id.name if next_task and next_task.machine_id else False,
+                })
+        # ---------------------------------------------------------
+
         return {
-            'kpi': {'total_insp': total_insp, 'passed': passed, 'failed': failed, 'total_machines': total_machines,
-                    'total_categories': total_categories},
-            'charts': {'status': status_data, 'machines_by_category': {'labels': cat_labels, 'data': cat_data}},
-            'lists': {'recent': recent_inspections, 'expiring': expiring_inspections}
+            'kpi': {
+                'total_insp': total_insp,
+                'passed': passed,
+                'failed': failed,
+                'total_machines': total_machines,
+                'total_categories': total_categories
+            },
+            'charts': {
+                'status': status_data,
+                'machines_by_category': {'labels': cat_labels, 'data': cat_data}
+            },
+            'lists': {
+                'recent': recent_inspections,
+                'expiring': expiring_inspections
+            },
+            'inspectors': inspector_data  # <--- Included in return
         }
 
     @api.model
     def get_customer_dashboard_stats(self):
         Machine = self.env['inspection.machine']
         Inspection = self.env['inspection.inspection']
+        Partner = self.env['res.partner']
+
+        # 1. Existing Logic for Charts & KPIs
         machines_by_partner = Machine.read_group(
             domain=[('partner_id', '!=', False)], fields=['partner_id'], groupby=['partner_id'],
             orderby='partner_id_count desc'
@@ -215,6 +271,7 @@ class InspectionInspection(models.Model):
             if index == 0:
                 largest_fleet_holder = {'id': partner_id, 'name': partner_name, 'count': count}
 
+        # 2. Risk Watchlist
         failed_by_partner = Inspection.read_group(
             domain=[('status', '=', 'failed'), ('customer_id', '!=', False)], fields=['customer_id'],
             groupby=['customer_id'], orderby='customer_id_count desc', limit=5
@@ -224,10 +281,22 @@ class InspectionInspection(models.Model):
             risk_list.append(
                 {'id': group['customer_id'][0], 'name': group['customer_id'][1], 'count': group['customer_id_count']})
 
+        # 3. UPDATED: Fetch MORE fields for the "Pro" Cards
+        all_customers = Partner.search_read(
+            domain=['|', ('machine_ids', '!=', False), ('customer_rank', '>', 0)],
+            fields=['id', 'name', 'street', 'city', 'email', 'phone', 'mobile', 'machine_count', 'inspection_count'],
+            order='name asc'
+        )
+
+        # Add risk flag
+        risk_ids = [r['id'] for r in risk_list]
+        for cust in all_customers:
+            cust['is_risk'] = cust['id'] in risk_ids
+
         return {
             'kpi': {'active_clients': active_clients_count, 'largest_fleet': largest_fleet_holder},
             'charts': {'market_share': {'labels': market_share_labels, 'data': market_share_data}},
-            'lists': {'risk_watchlist': risk_list}
+            'lists': {'risk_watchlist': risk_list, 'all_customers': all_customers}
         }
 
     # -------------------------------------------------------------------------

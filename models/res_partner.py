@@ -4,24 +4,36 @@ from odoo import models, fields, api
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    # Link to Machines
+    # =========================================================
+    # SAFETY PATCH: Fix "Oh snap!" Timezone Error
+    # =========================================================
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('tz') == 'Egypt':
+                vals['tz'] = 'Africa/Cairo'
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('tz') == 'Egypt':
+            vals['tz'] = 'Africa/Cairo'
+        return super().write(vals)
+
+    # =========================================================
+    # EXISTING FIELDS
+    # =========================================================
     machine_ids = fields.One2many('inspection.machine', 'partner_id', string="Machines")
     machine_count = fields.Integer(compute='_compute_machine_count', string="Machine Count")
-
-    # Link to Inspections (ALL)
     inspection_ids = fields.One2many('inspection.inspection', 'customer_id', string="Inspections")
     inspection_count = fields.Integer(compute='_compute_inspection_count', string="Inspection Count")
-
-    # Link to Certificates (PASSED ONLY) - NEW FEATURE
     certificate_count = fields.Integer(compute='_compute_certificate_count', string="Certificates")
-
-    # Link to Categories
     category_ids = fields.Many2many('inspection.category', compute='_compute_categories', string="Linked Categories")
     category_count = fields.Integer(compute='_compute_category_count', string="Category Count")
+    inspection_document_ids = fields.One2many('inspection.document', 'partner_id', string="Portal Documents")
 
-    # ---------------------------------------------------------
+    # =========================================================
     # COMPUTE METHODS
-    # ---------------------------------------------------------
+    # =========================================================
     @api.depends('machine_ids')
     def _compute_machine_count(self):
         for partner in self:
@@ -34,7 +46,6 @@ class ResPartner(models.Model):
 
     @api.depends('inspection_ids.status')
     def _compute_certificate_count(self):
-        """Count only passed inspections which serve as certificates"""
         for partner in self:
             partner.certificate_count = self.env['inspection.inspection'].search_count([
                 ('customer_id', '=', partner.id),
@@ -51,9 +62,9 @@ class ResPartner(models.Model):
         for partner in self:
             partner.category_count = len(partner.category_ids)
 
-    # ---------------------------------------------------------
-    # SMART BUTTON ACTIONS
-    # ---------------------------------------------------------
+    # =========================================================
+    # SMART BUTTONS
+    # =========================================================
     def action_view_machines(self):
         self.ensure_one()
         return {
@@ -77,7 +88,6 @@ class ResPartner(models.Model):
         }
 
     def action_view_certificates(self):
-        """Open only passed inspections (Digital Folder)"""
         self.ensure_one()
         return {
             'name': 'Certificates',
@@ -98,18 +108,18 @@ class ResPartner(models.Model):
             'domain': [('id', 'in', self.category_ids.ids)],
         }
 
-    # ---------------------------------------------------------
-    # CUSTOMER DASHBOARD DATA
-    # ---------------------------------------------------------
+    # =========================================================
+    # DASHBOARD DATA (FIXED: Added 'all_customers')
+    # =========================================================
     @api.model
     def get_customer_dashboard_stats(self):
         """Data for the refined Customer Dashboard"""
 
         Machine = self.env['inspection.machine']
         Inspection = self.env['inspection.inspection']
+        Partner = self.env['res.partner']
 
         # 1. KPIs
-        # Total Active Customers
         customers_with_machines = Machine.read_group([], ['partner_id'], ['partner_id'])
         total_active = len(customers_with_machines)
 
@@ -130,7 +140,6 @@ class ResPartner(models.Model):
             if group['partner_id']:
                 top_clients_labels.append(group['partner_id'][1])
                 top_clients_data.append(group['partner_id_count'])
-                # Capture the ID of the #1 client
                 if not top_client_id:
                     top_client_id = group['partner_id'][0]
 
@@ -147,15 +156,32 @@ class ResPartner(models.Model):
         )
 
         risk_watchlist = []
+        risk_ids = []
         for group in failed_inspections:
             if group['customer_id']:
-                partner = self.browse(group['customer_id'][0])
+                pid = group['customer_id'][0]
+                partner = self.browse(pid)
+                risk_ids.append(pid)
                 risk_watchlist.append({
-                    'id': group['customer_id'][0],
+                    'id': pid,
                     'name': group['customer_id'][1],
                     'phone': partner.phone or '',
                     'fail_count': group['customer_id_count']
                 })
+
+        # =========================================================
+        # 4. FULL DIRECTORY LIST (UPDATED FILTER)
+        # =========================================================
+        # We removed the strict filter. Now it shows ALL active partners.
+        all_customers = Partner.search_read(
+            domain=[('active', '=', True), ('type', '!=', 'private')],
+            fields=['id', 'name', 'city', 'email', 'phone', 'image_128', 'machine_count', 'inspection_count'],
+            order='create_date desc'  # Newest created customers show first
+        )
+
+        # Mark risky customers
+        for cust in all_customers:
+            cust['is_risk'] = cust['id'] in risk_ids
 
         return {
             'kpi': {
@@ -171,6 +197,7 @@ class ResPartner(models.Model):
                 }
             },
             'lists': {
-                'risk_watchlist': risk_watchlist
+                'risk_watchlist': risk_watchlist,
+                'all_customers': all_customers
             }
         }

@@ -9,6 +9,7 @@ class InspectionMachine(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     name = fields.Char(string="Machine Name/Description", required=True)
+    color = fields.Integer(string='Color Index')
     serial_number = fields.Char(string="Serial Number")
     model_no = fields.Char(string="Model Number")
     swl = fields.Char(string="S.W.L. (Safe Working Load)")
