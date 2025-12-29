@@ -52,25 +52,19 @@ class InspectionController(http.Controller):
             ]
         )
 
-    # 4. DIGITAL SIGNATURE (FIXED JS INTERACTION)
+    # 4. DIGITAL SIGNATURE
     @http.route('/inspection/sign/<int:inspection_id>', type='json', auth='user', website=True)
     def sign_inspection(self, inspection_id, name=None, signature=None, access_token=None, **kwargs):
-        # **kwargs is CRITICAL here. The JS widget often sends extra parameters.
-        # If we don't accept them, the code crashes and the spinner spins forever.
-
         inspection = request.env['inspection.inspection'].sudo().browse(inspection_id)
 
-        # Security Check
         user = request.env.user
         if inspection.customer_id != user.partner_id and not user.has_group('base.group_user'):
             return {'error': _('You are not authorized to sign this document.')}
 
         if signature:
-            # Strip the header from the image data
             if ',' in signature:
                 signature = signature.split(',')[1]
 
-            # Use SUDO to force the write, even if record rules are strict
             inspection.sudo().write({
                 'customer_signature': signature,
                 'signed_by': name or user.name,
@@ -98,7 +92,6 @@ class MachineCustomerPortal(CustomerPortal):
             values['inspection_count'] = request.env['inspection.inspection'].search_count([
                 ('customer_id', '=', partner.id)
             ])
-        # DOCUMENTS COUNTER
         if 'document_count' in counters:
             values['document_count'] = len(partner.inspection_document_ids)
 
@@ -106,21 +99,50 @@ class MachineCustomerPortal(CustomerPortal):
 
     # 2. MY MACHINES LIST
     @http.route(['/my/machines', '/my/machines/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_machines(self, page=1, sortby=None, **kw):
+    def portal_my_machines(self, page=1, sortby=None, search=None, search_in='all', **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
         Machine = request.env['inspection.machine']
+
         domain = [('partner_id', '=', partner.id)]
 
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': _('Search in All')},
+            'name': {'input': 'name', 'label': _('Name')},
+            'serial': {'input': 'serial', 'label': _('Serial Number')},
+            'model': {'input': 'model', 'label': _('Model Number')},
+        }
+
+        if search and search_in:
+            search = search.strip()
+            if search_in == 'all':
+                domain += ['|', '|', ('name', 'ilike', search), ('serial_number', 'ilike', search),
+                           ('model_no', 'ilike', search)]
+            elif search_in == 'name':
+                domain += [('name', 'ilike', search)]
+            elif search_in == 'serial':
+                domain += [('serial_number', 'ilike', search)]
+            elif search_in == 'model':
+                domain += [('model_no', 'ilike', search)]
+
         machine_count = Machine.search_count(domain)
-        pager = portal_pager(url="/my/machines", total=machine_count, page=page, step=10)
+        pager = portal_pager(
+            url="/my/machines",
+            url_args={'sortby': sortby, 'search': search, 'search_in': search_in},
+            total=machine_count,
+            page=page,
+            step=10
+        )
         machines = Machine.search(domain, offset=pager['offset'], limit=10)
 
         values.update({
             'machines': machines,
             'page_name': 'machine',
             'pager': pager,
-            'default_url': '/my/machines'
+            'default_url': '/my/machines',
+            'searchbar_inputs': searchbar_inputs,
+            'search': search,
+            'search_in': search_in
         })
         return request.render("certification.portal_my_machines", values)
 
@@ -194,9 +216,9 @@ class MachineCustomerPortal(CustomerPortal):
 
         return request.redirect(f'/my/machines/{machine_id}?msg=log_uploaded')
 
-    # 6. MY INSPECTIONS LIST
+    # 6. MY INSPECTIONS LIST (UPDATED WITH SEARCH)
     @http.route(['/my/inspections', '/my/inspections/page/<int:page>'], type='http', auth="user", website=True)
-    def portal_my_inspections(self, page=1, sortby=None, **kw):
+    def portal_my_inspections(self, page=1, sortby=None, search=None, search_in='all', **kw):
         values = self._prepare_portal_layout_values()
         partner = request.env.user.partner_id
         Inspection = request.env['inspection.inspection']
@@ -206,11 +228,45 @@ class MachineCustomerPortal(CustomerPortal):
             'date': {'label': 'Newest', 'order': 'start_date desc'},
             'status': {'label': 'Status', 'order': 'status'},
         }
+
+        # --- A. SEARCH INPUTS DEFINITION ---
+        searchbar_inputs = {
+            'all': {'input': 'all', 'label': _('Search in All')},
+            'ref': {'input': 'ref', 'label': _('Reference')},
+            'machine': {'input': 'machine', 'label': _('Machine Name')},
+            'serial': {'input': 'serial', 'label': _('Serial Number')},
+            'status': {'input': 'status', 'label': _('Status')},
+        }
+
+        # --- B. APPLY SEARCH LOGIC ---
+        if search and search_in:
+            search = search.strip()
+            if search_in == 'all':
+                domain += ['|', '|', '|',
+                           ('name', 'ilike', search),
+                           ('machine_id.name', 'ilike', search),
+                           ('machine_id.serial_number', 'ilike', search),
+                           ('status', 'ilike', search)]
+            elif search_in == 'ref':
+                domain += [('name', 'ilike', search)]
+            elif search_in == 'machine':
+                domain += [('machine_id.name', 'ilike', search)]
+            elif search_in == 'serial':
+                domain += [('machine_id.serial_number', 'ilike', search)]
+            elif search_in == 'status':
+                domain += [('status', 'ilike', search)]
+
         if not sortby: sortby = 'date'
         order = searchbar_sortings[sortby]['order']
 
         count = Inspection.search_count(domain)
-        pager = portal_pager(url="/my/inspections", url_args={'sortby': sortby}, total=count, page=page, step=15)
+        pager = portal_pager(
+            url="/my/inspections",
+            url_args={'sortby': sortby, 'search': search, 'search_in': search_in},
+            total=count,
+            page=page,
+            step=15
+        )
         inspections = Inspection.search(domain, order=order, limit=15, offset=pager['offset'])
 
         values.update({
@@ -219,7 +275,10 @@ class MachineCustomerPortal(CustomerPortal):
             'pager': pager,
             'default_url': '/my/inspections',
             'searchbar_sortings': searchbar_sortings,
+            'searchbar_inputs': searchbar_inputs,
             'sortby': sortby,
+            'search': search,
+            'search_in': search_in
         })
         return request.render("certification.portal_my_inspections", values)
 
