@@ -1,447 +1,338 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="paperformat_inspection_certificate" model="report.paperformat">
+        <field name="name">Inspection Certificate A4 (Zero Margin)</field>
+        <field name="default" eval="True"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_certificate" model="ir.actions.report">
+        <field name="name">Certificate of Test</field>
+        <field name="model">inspection.inspection</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">certification.report_certificate_template</field>
+        <field name="report_file">certification.report_certificate_template</field>
+        <field name="print_report_name">'Certificate - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_inspection_inspection"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_inspection_certificate"/>
+    </record>
+
     <template id="report_certificate_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.basic_layout">
 
                     <div class="page"
-                         style="font-family: 'Times New Roman', serif;
-                                color: black;
-                                line-height: 1.3;
-                                font-size: 19px;
-                                padding: 0 !important;
-                                margin: 0 !important;">
+                         style="font-family: 'Helvetica', 'Arial', sans-serif; color: #333; font-size: 14px; padding: 15px !important;">
 
-                        <div style="font-size: 19px;">
-                            <div style="border: 4px solid black;
-                                        padding: 0;
-                                        width: 100%;
-                                        height: 290mm;            /* was 275mm */
-                                        display: flex;
-                                        flex-direction: column;
-                                        box-sizing: border-box;">
+                        <div class="text-center mb-4">
+                            <h1 style="color: #663366; font-weight: bold; text-transform: uppercase; margin: 0; font-size: 28px;">
+                                Certificate of Test and Thorough Examination
+                            </h1>
+                            <p style="color: #666; margin: 0; font-size: 16px;">Reference:
+                                <span t-field="o.name"/>
+                            </p>
+                        </div>
 
-                                <div class="row m-0" style="border-bottom: 3px solid black; flex: 0 0 auto;">
-                                    <div class="col-9 p-3">
-                                        <h2 class="text-center"
-                                            style="font-weight: bold;
-                                                   text-transform: uppercase;
-                                                   font-size: 32px;
-                                                   margin-bottom: 5px;">
-                                            Certificate of Test and<br/>Thorough Examination
-                                        </h2>
-                                        <h3 class="text-center"
-                                            style="font-weight: bold;
-                                                   font-size: 26px;">
-                                            <span t-field="o.category_id.name"/>
-                                        </h3>
-                                    </div>
-                                    <div class="col-3 p-2 text-center"
-                                         style="border-left: 3px solid black;
-                                                display: flex;
-                                                align-items: center;
-                                                justify-content: center;">
-                                        <img t-if="o.qr_image"
-                                             t-att-src="'data:image/png;base64,%s' % o.qr_image.decode('utf-8')"
-                                             style="width: 130px; height: 130px;"/>
-                                    </div>
+                        <div style="border: 3px solid #663366; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+                            <div class="row m-0">
+                                <div class="col-6 p-3" style="border-right: 2px solid #eee;">
+                                    <h5 style="color: #663366; font-weight: bold; border-bottom: 2px solid #663366; padding-bottom: 5px; margin-bottom: 10px;">
+                                        CLIENT INFORMATION
+                                    </h5>
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td style="font-weight: bold; width: 35%;">Name:</td>
+                                            <td>
+                                                <span t-field="o.customer_id.name"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Address:</td>
+                                            <td>
+                                                <span t-field="o.customer_id.street"/>
+                                                <br t-if="o.customer_id.street2"/>
+                                                <span t-if="o.customer_id.street2" t-field="o.customer_id.street2"/>
+                                                <br t-if="o.customer_id.city or o.customer_id.country_id"/>
+                                                <span t-if="o.customer_id.city" t-field="o.customer_id.city"/>
+                                                <span t-if="o.customer_id.country_id">,
+                                                    <span t-field="o.customer_id.country_id.name"/>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Location:</td>
+                                            <td>
+                                                <span t-field="o.location_site"/>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
-
-                                <div class="row m-0"
-                                     style="border-bottom: 3px solid black; flex: 0 0 auto;">
-
-                                    <div class="col-6 p-0" style="border-right: 3px solid black;">
-                                        <table class="table table-sm mb-0"
-                                               style="width: 100%;
-                                                      font-size: 18px;
-                                                      border-collapse: collapse;">
-                                            <tr>
-                                                <td colspan="2"
-                                                    style="background-color: #ddd;
-                                                           border-bottom: 2px solid black;
-                                                           padding: 6px;">
-                                                    <strong>Client Information:</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="width: 30%; padding-left: 6px;">
-                                                    <strong>Name:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.customer_id.name"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Address:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.customer_id.contact_address"
-                                                          style="display: block;
-                                                                 max-height: 40px;
-                                                                 overflow: hidden;"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Location:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.location_site"/>
-                                                </td>
-                                            </tr>
-
-                                            <tr>
-                                                <td colspan="2"
-                                                    style="background-color: #ddd;
-                                                           border-top: 2px solid black;
-                                                           border-bottom: 2px solid black;
-                                                           padding: 6px;">
-                                                    <strong>Inspection Details:</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Type:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.inspection_type"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Date of Insp:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.start_date"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Last Insp:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.last_inspection_date"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Next Due:</strong>
-                                                </td>
-                                                <td style="font-weight: bold; color: #d9534f;">
-                                                    <span t-field="o.expire_date"/>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </div>
-
-                                    <div class="col-6 p-0">
-                                        <table class="table table-sm mb-0"
-                                               style="width: 100%;
-                                                      font-size: 18px;
-                                                      border-collapse: collapse;">
-                                            <tr>
-                                                <td colspan="2"
-                                                    style="background-color: #ddd;
-                                                           border-bottom: 2px solid black;
-                                                           padding: 6px;">
-                                                    <strong>Inspected Item Information:</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="width: 40%; padding-left: 6px;">
-                                                    <strong>Description:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.name"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Manufacturer:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.manufacturer"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Model:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.model_no"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Serial No:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.serial_number"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Owner ID:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.owner_id_no"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>S.W.L:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.swl"/>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="padding-left: 6px;">
-                                                    <strong>Mfg Date:</strong>
-                                                </td>
-                                                <td>
-                                                    <span t-field="o.machine_id.build_year"/>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </div>
+                                <div class="col-6 p-3">
+                                    <h5 style="color: #663366; font-weight: bold; border-bottom: 2px solid #663366; padding-bottom: 5px; margin-bottom: 10px;">
+                                        EQUIPMENT DETAILS
+                                    </h5>
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td style="font-weight: bold; width: 40%;">Description:</td>
+                                            <td>
+                                                <span t-field="o.machine_id.name"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Manufacturer:</td>
+                                            <td>
+                                                <span t-field="o.machine_id.manufacturer"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Model:</td>
+                                            <td>
+                                                <span t-field="o.machine_id.model_no"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Serial No:</td>
+                                            <td>
+                                                <span t-field="o.machine_id.serial_number"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Mfg Date:</td>
+                                            <td>
+                                                <span t-field="o.machine_id.build_year"/>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
-
-                                <div class="row m-0"
-                                     style="border-bottom: 3px solid black; flex: 0 0 auto;">
-                                    <div class="col-6 p-3" style="border-right: 3px solid black;">
-                                        <strong>Documents Reviewed:</strong>
-                                        <br/>
-                                        <span t-if="o.doc_report">[&#10004;]</span>
-                                        <span t-else="">[ ]</span>
-                                        Previous Report
-                                        <br/>
-                                        <span t-if="o.doc_maintenance">[&#10004;]</span>
-                                        <span t-else="">[ ]</span>
-                                        Maintenance Record
-                                        <br/>
-                                        <span t-if="o.doc_load_chart">[&#10004;]</span>
-                                        <span t-else="">[ ]</span>
-                                        Load Chart
-                                    </div>
-
-                                    <div class="col-6 p-0 text-center">
-                                        <t t-if="o.status == 'passed'">
-                                            <div style="background-color: #fff3cd;
-                                                        height: 100%;
-                                                        padding: 20px;">
-                                                <h4 style="font-weight: bold;
-                                                           border-bottom: 2px solid black;
-                                                           padding-bottom: 5px;">
-                                                    SAFE TO OPERATE
-                                                </h4>
-                                                <h2 style="font-weight: bold;
-                                                           margin: 10px 0;
-                                                           font-size: 42px;">YES
-                                                </h2>
-                                            </div>
-                                        </t>
-                                        <t t-if="o.status == 'failed'">
-                                            <div style="background-color: #f8d7da;
-                                                        height: 100%;
-                                                        padding: 30px;">
-                                                <h3 style="color: red;
-                                                           font-weight: bold;
-                                                           font-size: 28px;">
-                                                    NOT SAFE
-                                                </h3>
-                                            </div>
-                                        </t>
-                                    </div>
-                                </div>
-
-                                <div class="row m-0" style="flex: 1;">
-                                    <div class="col-6 p-3"
-                                         style="border-right: 3px solid black;">
-                                        <strong>Inspected By:</strong>
-                                        <span t-field="o.inspector_name"/>
-                                        <br/>
-                                        <br/>
-                                        <div style="border: 2px dashed black;
-                                                    height: 80px;
-                                                    width: 220px;
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;">
-                                            <img t-if="o.inspector_signature"
-                                                 t-att-src="image_data_uri(o.inspector_signature)"
-                                                 style="max-height: 70px; max-width: 200px;"/>
-                                            <span t-else="" class="text-muted">(Signature)</span>
+                            </div>
+                            <div style="border-top: 2px solid #eee; margin: 0;"></div>
+                            <div class="row m-0">
+                                <div class="col-6 p-3" style="border-right: 2px solid #eee;">
+                                    <h5 style="color: #663366; font-weight: bold; border-bottom: 2px solid #663366; padding-bottom: 5px; margin-bottom: 10px;">
+                                        INSPECTION DETAILS
+                                    </h5>
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td style="font-weight: bold;">Type:</td>
+                                            <td>
+                                                <span t-field="o.inspection_type"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Date of Insp:</td>
+                                            <td>
+                                                <span t-field="o.start_date"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Last Insp:</td>
+                                            <td>
+                                                <span t-field="o.last_inspection_date"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold;">Next Due:</td>
+                                            <td style="color: #dc3545; font-weight: bold;">
+                                                <span t-field="o.expire_date"/>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <div class="mt-3 p-2 bg-light rounded border">
+                                        <div style="font-weight: bold; margin-bottom: 5px;">DOCUMENTS REVIEWED:</div>
+                                        <div>
+                                            <span t-if="o.doc_report" style="color:#28a745;">&#9745;</span>
+                                            <span t-else="" style="color:#ccc;">&#9744;</span>
+                                            Previous Report
                                         </div>
-                                        <br/>
-                                        <b>Date:</b>
-                                        <span t-field="o.start_date"/>
-                                    </div>
-                                    <div class="col-6 p-3" style="position: relative;">
-                                        <t t-if="o.customer_signature">
-                                            <strong>Customer Acceptance:</strong>
-                                            <br/>
-                                            <img t-att-src="image_data_uri(o.customer_signature)"
-                                                 style="max-height: 80px; max-width: 200px; border-bottom: 1px solid black;"/>
-                                            <br/>
-                                            <small>
-                                                Signed by:
-                                                <span t-field="o.signed_by"/>
-                                                <br/>
-                                                Date:
-                                                <span t-field="o.signed_date" t-options='{"widget": "date"}'/>
-                                            </small>
-                                        </t>
-                                        <t t-else="">
-                                            <strong>Approved By:</strong>
-                                            <br/>
-                                            <br/>
-                                            <br/>
-                                            <div style="border-bottom: 2px solid black;
-                                                        width: 220px;
-                                                        margin-bottom: 5px;"></div>
-                                            <strong>Signature &amp; Stamp</strong>
-                                        </t>
-
-                                        <div t-if="o.status == 'passed'"
-                                             style="position: absolute;
-                                                    top: 50%;
-                                                    right: 40px;
-                                                    border: 4px double #28a745;
-                                                    color: #28a745;
-                                                    font-weight: bold;
-                                                    font-size: 16px;
-                                                    text-align: center;
-                                                    padding: 10px;
-                                                    transform: translateY(-50%) rotate(-12deg);
-                                                    opacity: 0.9;
-                                                    width: 180px;
-                                                    background-color: white;">
-                                            APPROVED<br/>LST CERTIFICATION
+                                        <div>
+                                            <span t-if="o.doc_maintenance" style="color:#28a745;">&#9745;</span>
+                                            <span t-else="" style="color:#ccc;">&#9744;</span>
+                                            Maintenance Record
+                                        </div>
+                                        <div>
+                                            <span t-if="o.doc_load_chart" style="color:#28a745;">&#9745;</span>
+                                            <span t-else="" style="color:#ccc;">&#9744;</span>
+                                            Load Chart
                                         </div>
                                     </div>
+                                </div>
+                                <div class="col-6 p-3 text-center d-flex flex-column justify-content-center align-items-center bg-light">
+                                    <div style="font-size: 18px; font-weight: bold; color: #555; margin-bottom: 10px;">
+                                        SAFE TO OPERATE
+                                    </div>
+                                    <t t-if="o.status == 'passed'">
+                                        <div style="background-color: #28a745; color: white; border-radius: 15px; padding: 15px 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                            <h1 style="margin: 0; font-weight: bold; font-size: 48px;">YES</h1>
+                                            <div style="font-size: 12px; margin-top: 5px;">PASSED</div>
+                                        </div>
+                                    </t>
+                                    <t t-if="o.status == 'failed'">
+                                        <div style="background-color: #dc3545; color: white; border-radius: 15px; padding: 15px 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                            <h1 style="margin: 0; font-weight: bold; font-size: 48px;">NO</h1>
+                                            <div style="font-size: 12px; margin-top: 5px;">FAILED</div>
+                                        </div>
+                                    </t>
                                 </div>
                             </div>
                         </div>
 
-                        <div style="page-break-before: always;"></div>
-
-                        <div style="font-size: 14px;">
-                            <div class="row mb-3 mt-4">
-                                <div class="col-12 text-center">
-                                    <h3 style="font-weight: bold;
-                                               text-decoration: underline;
-                                               font-size: 20px;">
-                                        Examination Checklist
-                                    </h3>
-                                    <p style="font-size: 14px;">
-                                        <strong>Ref:</strong>
-                                        <span t-field="o.name"/>
-                                        |
-                                        <strong>S.N:</strong>
-                                        <span t-field="o.machine_id.serial_number"/>
-                                    </p>
+                        <div style="border: 2px solid #663366; border-radius: 12px; padding: 15px; background-color: #fcfcfc;">
+                            <div class="row">
+                                <div class="col-4 text-center border-end">
+                                    <strong style="color: #663366;">INSPECTED BY</strong>
+                                    <br/>
+                                    <span t-field="o.inspector_name" style="font-size: 16px;"/>
+                                    <div style="height: 80px; display: flex; align-items: center; justify-content: center; margin: 10px 0;">
+                                        <img t-if="o.inspector_signature"
+                                             t-att-src="image_data_uri(o.inspector_signature)"
+                                             style="max-height: 70px; max-width: 100%;"/>
+                                    </div>
+                                    <div style="border-top: 1px solid #ccc; width: 80%; margin: 0 auto;"></div>
+                                    <small>Signature</small>
+                                </div>
+                                <div class="col-4 text-center border-end">
+                                    <strong style="color: #663366;">APPROVED BY</strong>
+                                    <br/>
+                                    <span t-field="o.company_id.name" style="font-size: 16px;"/>
+                                    <div style="height: 80px; display: flex; align-items: center; justify-content: center; margin: 10px 0;">
+                                        <img t-if="o.customer_signature"
+                                             t-att-src="image_data_uri(o.customer_signature)"
+                                             style="max-height: 70px; max-width: 100%;"/>
+                                    </div>
+                                    <div style="border-top: 1px solid #ccc; width: 80%; margin: 0 auto;"></div>
+                                    <small>Signature &amp; Stamp</small>
+                                </div>
+                                <div class="col-4 text-center d-flex flex-column justify-content-center align-items-center">
+                                    <img t-if="o.qr_image" t-att-src="image_data_uri(o.qr_image)"
+                                         style="width: 110px; height: 110px; border: 2px solid #663366; border-radius: 8px; padding: 2px;"/>
+                                    <small style="margin-top: 5px; color: #666;">Scan to Verify</small>
                                 </div>
                             </div>
-
-                            <table class="table"
-                                   style="width: 100%;
-                                          border-collapse: collapse;
-                                          font-size: 14px;
-                                          border: 2px solid black;">
-                                <thead style="background-color: #ddd; display: table-header-group;">
-                                    <tr>
-                                        <th class="text-center"
-                                            style="width: 8%; border: 1px solid black; padding: 8px;">NO.
-                                        </th>
-                                        <th style="width: 50%; border: 1px solid black; padding: 8px;">ITEM</th>
-                                        <th class="text-center"
-                                            style="width: 8%; border: 1px solid black; padding: 8px;">A
-                                        </th>
-                                        <th class="text-center"
-                                            style="width: 8%; border: 1px solid black; padding: 8px;">R
-                                        </th>
-                                        <th class="text-center"
-                                            style="width: 8%; border: 1px solid black; padding: 8px;">N/A
-                                        </th>
-                                        <th style="width: 18%; border: 1px solid black; padding: 8px;">REMARKS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <t t-foreach="o.line_ids" t-as="line">
-                                        <tr>
-                                            <td class="text-center"
-                                                style="border: 1px solid black; padding: 5px;">
-                                                <t t-if="line.section">
-                                                    <b>
-                                                        <t t-esc="line.section"/>
-                                                    </b>
-                                                    <br/>
-                                                </t>
-                                                <span t-field="line.serial_no"/>
-                                            </td>
-                                            <td style="border: 1px solid black; padding: 5px;">
-                                                <span t-field="line.name"/>
-                                            </td>
-                                            <td class="text-center"
-                                                style="border: 1px solid black; padding: 5px;">
-                                                <span t-if="line.is_accepted"
-                                                      style="font-family: DejaVu Sans;
-                                                             font-size: 18px;
-                                                             font-weight: bold;">
-                                                    &#10004;
-                                                </span>
-                                            </td>
-                                            <td class="text-center"
-                                                style="border: 1px solid black; padding: 5px;">
-                                                <span t-if="line.is_rejected"
-                                                      style="font-family: DejaVu Sans;
-                                                             font-size: 18px;
-                                                             font-weight: bold;">
-                                                    &#10008;
-                                                </span>
-                                            </td>
-                                            <td class="text-center"
-                                                style="border: 1px solid black; padding: 5px;">
-                                                <span t-if="line.is_na"
-                                                      style="font-weight: bold; font-size: 16px;">X
-                                                </span>
-                                            </td>
-                                            <td style="border: 1px solid black; padding: 5px;">
-                                                <span t-field="line.comment"/>
-                                                <t t-if="line.recommendation">
-                                                    <br/>
-                                                    <strong>Rec:</strong>
-                                                    <span t-field="line.recommendation" style="font-style: italic;"/>
-                                                </t>
-                                            </td>
-                                        </tr>
-                                        <tr t-if="line.image_ids">
-                                            <td colspan="6"
-                                                style="border: 1px solid black; padding: 5px; background-color: #f9f9f9;">
-                                                <strong>Evidence Photos:</strong>
-                                                <br/>
-                                                <div style="display: flex; flex-wrap: wrap;">
-                                                    <t t-foreach="line.image_ids" t-as="photo">
-                                                        <div style="margin: 5px; text-align: center;">
-                                                            <img t-att-src="image_data_uri(photo.image)"
-                                                                 style="max-height: 120px; border: 1px solid #ccc; padding: 2px;"/>
-                                                            <div t-if="photo.description"
-                                                                 style="font-size: 10px; color: #555;">
-                                                                <t t-esc="photo.description"/>
-                                                            </div>
-                                                        </div>
-                                                    </t>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </t>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
+
+                    <div style="page-break-before: always;"></div>
+
+                    <div class="page"
+                         style="font-family: 'Helvetica', 'Arial', sans-serif; color: #333; font-size: 14px; padding: 15px !important;">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <h3 style="color: #663366; border-bottom: 2px solid #663366; padding-bottom: 5px;">
+                                    Examination Checklist
+                                </h3>
+                                <p>
+                                    <strong>Ref:</strong>
+                                    <span t-field="o.name"/>
+                                    | <strong>Machine:</strong>
+                                    <span t-field="o.machine_id.name"/>
+                                </p>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered table-sm" style="font-size: 18px;">
+                            <thead style="background-color: #f2f2f2;">
+                                <tr>
+                                    <th style="width: 5%;">No.</th>
+                                    <th style="width: 40%;">Description</th>
+                                    <th class="text-center" style="width: 5%;">A</th>
+                                    <th class="text-center" style="width: 5%;">R</th>
+                                    <th class="text-center" style="width: 5%;">N/A</th>
+                                    <th style="width: 20%;">Remarks</th>
+                                    <th style="width: 20%;">Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr t-if="line.section" style="background-color: #e9ecef;">
+                                        <td colspan="7" style="font-weight: bold; color: #663366; font-size: 19px;">
+                                            <t t-esc="line.section"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <span t-field="line.serial_no"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.name"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-if="line.is_accepted" style="color: green; font-weight: bold;">
+                                                &#10004;
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-if="line.is_rejected" style="color: red; font-weight: bold;">
+                                                &#10008;
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-if="line.is_na" style="color: gray;">X</span>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.comment"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="line.recommendation"
+                                                  style="font-style: italic; color: #555;"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <t t-set="has_images" t-value="any(l.image_ids for l in o.line_ids)"/>
+
+                    <t t-if="has_images">
+                        <div style="page-break-before: always;"></div>
+                        <div class="page"
+                             style="font-family: 'Helvetica', 'Arial', sans-serif; color: #333; font-size: 14px; padding: 15px !important;">
+
+                            <h3 style="color: #663366; border-bottom: 2px solid #663366; padding-bottom: 5px; margin-bottom: 20px;">
+                                Inspection Evidence / Photos
+                            </h3>
+
+                            <div class="row">
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <t t-if="line.image_ids">
+                                        <div class="col-12 mb-3">
+                                            <strong style="font-size: 18px; border-bottom: 1px solid #ccc; display: block; padding-bottom: 5px;">
+                                                <span t-field="line.serial_no"/>
+                                                -
+                                                <span t-field="line.name"/>
+                                            </strong>
+                                        </div>
+                                        <t t-foreach="line.image_ids" t-as="photo">
+                                            <div class="col-12 mb-5 text-center" style="break-inside: avoid;">
+                                                <img t-att-src="image_data_uri(photo.image)"
+                                                     style="max-height: 900px; width: auto; max-width: 100%; object-fit: contain; border: 1px solid #ddd; padding: 2px;"/>
+                                                <div class="mt-2"
+                                                     style="font-size: 18px; font-weight: bold; color: #333;">
+                                                    <span t-field="photo.description"/>
+                                                </div>
+                                            </div>
+                                        </t>
+                                        <div class="col-12">
+                                            <hr style="border-top: 2px solid #663366; margin-bottom: 30px;"/>
+                                        </div>
+                                    </t>
+                                </t>
+                            </div>
+                        </div>
+                    </t>
+
                 </t>
             </t>
         </t>
