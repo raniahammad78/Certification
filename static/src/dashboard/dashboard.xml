@@ -15,10 +15,8 @@
             </div>
 
             <div class="row g-3 mb-4">
-
                 <div class="col-md-3">
-                    <div class="kpi-mini-card kpi-blue"
-                         style="cursor: pointer;"
+                    <div class="kpi-mini-card kpi-blue" style="cursor: pointer;"
                          t-on-click="() => this.openView('inspection.machine', 'list')">
                         <div>
                             <div class="kpi-label">Total Machines</div>
@@ -29,10 +27,8 @@
                         <i class="fa fa-cube text-primary opacity-50 fa-2x"/>
                     </div>
                 </div>
-
                 <div class="col-md-3">
-                    <div class="kpi-mini-card kpi-green"
-                         style="cursor: pointer;"
+                    <div class="kpi-mini-card kpi-green" style="cursor: pointer;"
                          t-on-click="() => this.openInspectionsByStatus('passed')">
                         <div>
                             <div class="kpi-label">Passed</div>
@@ -43,10 +39,8 @@
                         <i class="fa fa-check-circle text-success opacity-50 fa-2x"/>
                     </div>
                 </div>
-
                 <div class="col-md-3">
-                    <div class="kpi-mini-card kpi-red"
-                         style="cursor: pointer;"
+                    <div class="kpi-mini-card kpi-red" style="cursor: pointer;"
                          t-on-click="() => this.openInspectionsByStatus('failed')">
                         <div>
                             <div class="kpi-label">Failed</div>
@@ -57,10 +51,8 @@
                         <i class="fa fa-exclamation-triangle text-danger opacity-50 fa-2x"/>
                     </div>
                 </div>
-
                 <div class="col-md-3">
-                    <div class="kpi-mini-card kpi-yellow"
-                         style="cursor: pointer;"
+                    <div class="kpi-mini-card kpi-yellow" style="cursor: pointer;"
                          t-on-click="() => this.openInspectionsByStatus('pending')">
                         <div>
                             <div class="kpi-label">Pending</div>
@@ -103,7 +95,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="col-lg-6">
                     <div class="equip-card h-100">
                         <div class="equip-card-header">
@@ -113,6 +104,74 @@
                         <div class="equip-card-body d-flex align-items-center justify-content-center">
                             <div style="height: 250px; width: 100%; position: relative;">
                                 <canvas t-ref="chart_status"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="equip-card">
+                        <div class="equip-card-header">
+                            <span class="equip-card-title">Inspector Activity</span>
+                            <div class="badge bg-primary bg-opacity-10 text-primary">
+                                <t t-esc="state.inspectors.length"/>
+                                Inspectors
+                            </div>
+                        </div>
+                        <div class="equip-card-body p-4">
+                            <div class="row g-4">
+                                <t t-foreach="state.inspectors" t-as="emp" t-key="emp.id">
+                                    <div class="col-xl-3 col-lg-4 col-md-6">
+                                        <div class="d-flex align-items-center p-3 rounded-3 border hover-shadow"
+                                             style="background: #f8fafc; transition: all 0.2s; cursor: pointer;"
+                                             t-on-click="() => this.openInspectorInspections(emp.id)">
+
+                                            <img t-att-src="'/web/image?model=res.users&amp;field=image_128&amp;id='+emp.id"
+                                                 class="rounded-circle border border-white shadow-sm"
+                                                 style="width: 50px; height: 50px; object-fit: cover;"
+                                                 onerror="this.src='/web/static/img/placeholder.png'"/>
+
+                                            <div class="ms-3 overflow-hidden w-100">
+                                                <h6 class="fw-bold text-dark mb-1 text-truncate">
+                                                    <t t-esc="emp.name"/>
+                                                </h6>
+
+                                                <div class="d-flex align-items-center justify-content-between text-small"
+                                                     style="font-size: 12px;">
+                                                    <span class="text-success fw-bold">
+                                                        <i class="fa fa-check-circle me-1"/>
+                                                        <t t-esc="emp.done_count"/>
+                                                        Done
+                                                    </span>
+                                                </div>
+
+                                                <div class="mt-1 pt-1 border-top" style="font-size: 11px;">
+                                                    <t t-if="emp.next_date">
+                                                        <div class="text-truncate text-muted" title="Next Assignment">
+                                                            <i class="fa fa-clock-o text-warning me-1"/>
+                                                            <span class="fw-bold text-dark">
+                                                                <t t-esc="emp.next_machine"/>
+                                                            </span>
+                                                        </div>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="text-muted text-opacity-50">
+                                                            <i class="fa fa-check-all me-1"/>
+                                                            All caught up
+                                                        </span>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                                <t t-if="!state.inspectors.length">
+                                    <div class="col-12 text-center text-muted py-3">
+                                        No active inspector data found.
+                                    </div>
+                                </t>
                             </div>
                         </div>
                     </div>
@@ -226,6 +285,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </t>
 </templates>

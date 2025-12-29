@@ -1,123 +1,185 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates>
     <t t-name="certification.CustomerDashboard" owl="1">
-        <div class="o_dashboard_smooth h-100 overflow-auto">
 
-            <div class="d-flex justify-content-between align-items-center mb-4 ps-2">
+        <div class="o_dashboard_smooth h-100 overflow-auto p-4"
+             style="background-color: #F2F2F7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+
+            <div class="d-flex justify-content-between align-items-end mb-5 px-2">
                 <div>
-                    <div class="ios-subtitle">Client Insights</div>
-                    <div class="ios-title">Customers</div>
+                    <div class="text-uppercase fw-bold text-muted small mb-1"
+                         style="letter-spacing: 1px; font-size: 11px;">Fleet Management
+                    </div>
+                    <h1 class="fw-bold text-dark mb-0" style="font-size: 42px; letter-spacing: -1px;">Customers</h1>
                 </div>
-                <div>
-                    <button class="btn btn-dark rounded-pill px-4 py-2 shadow-sm fw-bold"
-                            t-on-click="() => this.action.doAction('base.action_partner_form')">
-                        <i class="fa fa-plus me-2"/>New
+                <div class="d-flex gap-3">
+                    <div class="d-flex align-items-center px-3 rounded-4"
+                         style="background-color: #E3E3E8; width: 320px; height: 44px;">
+                        <i class="fa fa-search text-muted opacity-50 me-2"/>
+                        <input type="text" class="border-0 bg-transparent w-100 shadow-none"
+                               style="outline: none; font-size: 17px;"
+                               placeholder="Search"
+                               t-model="state.searchQuery"/>
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4 fw-bold border-0"
+                            style="background-color: #007AFF; height: 44px; font-size: 15px;"
+                            t-on-click="() => this.openNewCustomer()">
+                        <i class="fa fa-plus me-1"/>
+                        New
                     </button>
                 </div>
             </div>
 
-            <div class="row g-4 mb-4">
+            <div class="row g-4 mb-5">
 
-                <div class="col-md-6">
-                    <div class="ios-widget position-relative overflow-hidden"
-                         t-on-click="() => this.openAllCustomers()"
-                         style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start position-relative"
-                             style="z-index: 2;">
-                            <div>
-                                <div class="ios-icon-box ios-purple">
-                                    <i class="fa fa-users"/>
-                                </div>
-                                <div class="widget-value">
-                                    <t t-esc="state.kpi.active_clients"/>
-                                </div>
-                                <div class="widget-label">Active Clients</div>
-                                <small class="text-primary fw-bold mt-2 d-block">View All
-                                    <i class="fa fa-arrow-right"/>
-                                </small>
+                <div class="col-md-4">
+                    <div class="bg-white p-4 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden"
+                         style="border-radius: 26px; box-shadow: 0 8px 30px rgba(0,0,0,0.04);">
+
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center justify-content-center text-white"
+                                 style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #007AFF, #0055FF);">
+                                <i class="fa fa-users fa-lg"/>
+                            </div>
+                            <div class="bg-light rounded-pill px-2 py-1 text-muted fw-bold" style="font-size: 11px;">
+                                ACTIVE
                             </div>
                         </div>
-                        <i class="fa fa-circle-o-notch fa-5x text-muted opacity-10 position-absolute"
-                           style="bottom: -20px; right: -20px; z-index: 1;"/>
+
+                        <div class="mt-4">
+                            <h2 class="fw-bold text-dark mb-0" style="font-size: 42px;">
+                                <t t-esc="state.kpi.active_clients"/>
+                            </h2>
+                            <span class="text-muted fw-semibold" style="font-size: 15px;">Total Clients</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="col-md-6">
-                    <div class="ios-widget position-relative overflow-hidden"
-                         t-on-click="() => this.openCustomer(state.kpi.largest_fleet.id)"
-                         style="cursor: pointer;">
-                        <div class="d-flex justify-content-between align-items-start position-relative"
-                             style="z-index: 2;">
-                            <div>
-                                <div class="ios-icon-box ios-yellow">
-                                    <i class="fa fa-trophy"/>
-                                </div>
-                                <div class="widget-value text-truncate" style="font-size: 1.8rem; max-width: 250px;">
-                                    <t t-esc="state.kpi.largest_fleet.name"/>
-                                </div>
-                                <div class="widget-label">Largest Fleet Holder</div>
-                                <div class="widget-sub">
-                                    <i class="fa fa-hdd-o me-1"/>
+                <div class="col-md-4">
+                    <div class="bg-white p-4 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden"
+                         style="border-radius: 26px; box-shadow: 0 8px 30px rgba(0,0,0,0.04);">
+
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center justify-content-center text-white"
+                                 style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #FF9500, #FF5E3A);">
+                                <i class="fa fa-trophy fa-lg"/>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="fw-bold text-dark mb-0 text-truncate">
+                                <t t-esc="state.kpi.largest_fleet.name"/>
+                            </h4>
+                            <div class="d-flex align-items-center mt-1 text-secondary fw-semibold">
+                                <span style="font-size: 15px;">Largest Fleet</span>
+                                <span class="mx-2">•</span>
+                                <span style="font-size: 15px;">
                                     <t t-esc="state.kpi.largest_fleet.count"/>
-                                    Machines
-                                </div>
+                                    Units
+                                </span>
                             </div>
                         </div>
-                        <i class="fa fa-star fa-5x text-warning opacity-25 position-absolute"
-                           style="bottom: -20px; right: -20px; z-index: 1;"/>
                     </div>
                 </div>
-            </div>
 
-            <div class="row g-4">
-                <div class="col-lg-7">
-                    <div class="ios-widget">
-                        <div class="mb-4">
-                            <h5 class="fw-bold mb-1">Market Share</h5>
-                            <span class="text-muted small">Top 5 Clients by Fleet Size</span>
+                <div class="col-md-4">
+                    <div class="bg-white p-4 h-100 d-flex flex-column justify-content-between"
+                         style="border-radius: 26px; box-shadow: 0 8px 30px rgba(0,0,0,0.04);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-secondary" style="font-size: 13px; text-transform: uppercase;">
+                                Share
+                            </span>
+                            <i class="fa fa-pie-chart text-muted opacity-50"/>
                         </div>
-                        <div style="height: 300px; position: relative;">
+                        <div class="flex-grow-1" style="min-height: 100px;">
                             <canvas t-ref="chart_market"/>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-lg-5">
-                    <div class="ios-widget">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0 text-danger">Risk Watchlist</h5>
-                            <i class="fa fa-exclamation-circle text-danger opacity-50"/>
-                        </div>
-                        <div class="d-flex flex-column h-100 overflow-auto">
-                            <t t-foreach="state.lists.risk_watchlist" t-as="risk" t-key="risk.id">
-                                <div class="ios-list-item" t-on-click="() => this.openCustomer(risk.id)">
-                                    <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-danger bg-opacity-10 text-danger fw-bold d-flex align-items-center justify-content-center me-3"
-                                             style="width:35px; height:35px;">
-                                            !
-                                        </div>
-                                        <span class="fw-bold text-dark">
-                                            <t t-esc="risk.name"/>
-                                        </span>
-                                    </div>
-                                    <span class="badge bg-danger rounded-pill px-3 py-2">
-                                        <t t-esc="risk.count"/>
-                                        Failures
-                                    </span>
-                                </div>
-                            </t>
-                            <t t-if="state.lists.risk_watchlist.length === 0">
-                                <div class="text-center text-muted py-5">
-                                    <i class="fa fa-check-circle fa-2x text-success mb-2"/>
-                                    <br/>
-                                    All clients are in good standing.
-                                </div>
-                            </t>
-                        </div>
-                    </div>
-                </div>
             </div>
 
+            <div class="d-flex align-items-center justify-content-between mb-3 px-2">
+                <h3 class="fw-bold text-dark m-0" style="font-size: 22px;">Directory</h3>
+                <span class="text-secondary fw-semibold" style="font-size: 15px;">
+                    <t t-esc="filteredCustomers.length"/>
+                    Visible
+                </span>
+            </div>
+
+            <div class="row g-4">
+                <t t-foreach="filteredCustomers" t-as="cust" t-key="cust.id">
+                    <div class="col-xl-3 col-lg-4 col-md-6">
+
+                        <div class="bg-white h-100 position-relative hover-transform"
+                             style="border-radius: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); transition: transform 0.2s;"
+                             onmouseover="this.style.transform='scale(1.02)'"
+                             onmouseout="this.style.transform='scale(1)'">
+
+                            <div class="p-4 d-flex flex-column align-items-center text-center">
+
+                                <div class="position-relative mb-3">
+                                    <img t-att-src="'/web/image?model=res.partner&amp;field=image_128&amp;id='+cust.id"
+                                         class="rounded-circle"
+                                         style="width: 80px; height: 80px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"
+                                         onerror="this.src='/web/static/img/placeholder.png'"/>
+
+                                    <t t-if="cust.is_risk">
+                                        <div class="position-absolute top-0 end-0 bg-danger border border-2 border-white rounded-circle shadow-sm"
+                                             style="width: 20px; height: 20px;"></div>
+                                    </t>
+                                </div>
+
+                                <h5 class="fw-bold text-dark mb-1 text-truncate w-100" style="font-size: 18px;">
+                                    <t t-esc="cust.name"/>
+                                </h5>
+                                <div class="text-secondary small mb-3 text-truncate w-100" style="font-size: 13px;">
+                                    <t t-esc="cust.city or 'Unknown City'"/>
+                                </div>
+
+                                <div class="d-flex gap-2 w-100 mb-4">
+                                    <div class="flex-fill py-2 rounded-3" style="background-color: #F2F2F7;">
+                                        <div class="fw-bold text-dark">
+                                            <t t-esc="cust.machine_count"/>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 9px; font-weight: 700;">MACHINES</div>
+                                    </div>
+                                    <div class="flex-fill py-2 rounded-3" style="background-color: #F2F2F7;">
+                                        <div class="fw-bold text-dark">
+                                            <t t-esc="cust.inspection_count"/>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 9px; font-weight: 700;">REPORTS</div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-3 justify-content-center">
+                                    <a t-attf-href="mailto:#{cust.email}" t-if="cust.email"
+                                       class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white text-decoration-none"
+                                       style="width: 40px; height: 40px; background-color: #007AFF;">
+                                        <i class="fa fa-envelope"/>
+                                    </a>
+                                    <a t-attf-href="tel:#{cust.phone}" t-if="cust.phone"
+                                       class="d-flex align-items-center justify-content-center rounded-circle bg-success text-white text-decoration-none"
+                                       style="width: 40px; height: 40px; background-color: #34C759;">
+                                        <i class="fa fa-phone"/>
+                                    </a>
+                                    <button class="d-flex align-items-center justify-content-center rounded-circle border-0 text-white"
+                                            style="width: 40px; height: 40px; background-color: #8E8E93;"
+                                            t-on-click="() => this.openCustomer(cust.id)">
+                                        <i class="fa fa-arrow-right"/>
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <t t-if="filteredCustomers.length === 0">
+                    <div class="col-12 text-center py-5">
+                        <span class="text-muted">No results found</span>
+                    </div>
+                </t>
+            </div>
         </div>
     </t>
 </templates>

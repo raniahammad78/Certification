@@ -1,7 +1,7 @@
 /** @odoo-module */
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { Component, onWillStart, useRef, onMounted } from "@odoo/owl";
+import { Component, onWillStart, useRef, onMounted, useState } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
 
 export class InspectionDashboard extends Component {
@@ -11,10 +11,12 @@ export class InspectionDashboard extends Component {
 
         this.chartStatusRef = useRef("chart_status");
 
-        this.state = {
+        this.state = useState({
             kpi: { total_insp: 0, passed: 0, failed: 0, total_machines: 0 },
-            lists: { recent: [], expiring: [] }
-        };
+            lists: { recent: [], expiring: [] },
+            inspectors: []
+        });
+
         this.chartData = { status: [0, 0, 0] };
 
         onWillStart(async () => {
@@ -31,6 +33,11 @@ export class InspectionDashboard extends Component {
             if (result) {
                 this.state.kpi = result.kpi || this.state.kpi;
                 this.state.lists = result.lists || this.state.lists;
+
+                if (result.inspectors) {
+                    this.state.inspectors = result.inspectors;
+                }
+
                 if (result.charts && result.charts.status) {
                     this.chartData.status = result.charts.status;
                 }
@@ -41,7 +48,11 @@ export class InspectionDashboard extends Component {
     async renderCharts() {
         if (!window.Chart || !this.chartStatusRef.el) return;
 
-        new Chart(this.chartStatusRef.el, {
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
+
+        this.chartInstance = new Chart(this.chartStatusRef.el, {
             type: 'doughnut',
             data: {
                 labels: ['Passed', 'Failed', 'Pending'],
@@ -80,7 +91,18 @@ export class InspectionDashboard extends Component {
         });
     }
 
-    // NEW: Open filtered list based on status
+    // === NEW FUNCTION: OPEN INSPECTOR'S WORK ===
+    openInspectorInspections(inspectorId) {
+        this.action.doAction({
+            type: 'ir.actions.act_window',
+            name: 'Inspector Activity',
+            res_model: 'inspection.inspection',
+            domain: [['inspector_id', '=', inspectorId]], // Filters by the clicked inspector
+            views: [[false, 'list'], [false, 'form']],
+            target: 'current'
+        });
+    }
+
     openInspectionsByStatus(status) {
         let domain = [];
         let name = "Inspections";

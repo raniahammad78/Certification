@@ -1,7 +1,7 @@
 /** @odoo-module */
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { Component, onWillStart, useRef, onMounted } from "@odoo/owl";
+import { Component, onWillStart, useRef, onMounted, useState } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
 
 export class CustomerDashboard extends Component {
@@ -10,10 +10,12 @@ export class CustomerDashboard extends Component {
         this.action = useService("action");
         this.chartMarketRef = useRef("chart_market");
 
-        this.state = {
+        this.state = useState({
             kpi: { active_clients: 0, largest_fleet: {id: false, name: '-', count: 0} },
-            lists: { risk_watchlist: [] }
-        };
+            lists: { risk_watchlist: [], all_customers: [] },
+            searchQuery: ""
+        });
+
         this.chartData = { market_share: { labels: [], data: [] } };
 
         onWillStart(async () => {
@@ -34,6 +36,17 @@ export class CustomerDashboard extends Component {
         } catch (e) { console.error("Error loading customer stats", e); }
     }
 
+    get filteredCustomers() {
+        const query = this.state.searchQuery.toLowerCase();
+        if (!query) return this.state.lists.all_customers;
+
+        return this.state.lists.all_customers.filter(c =>
+            (c.name && c.name.toLowerCase().includes(query)) ||
+            (c.email && c.email.toLowerCase().includes(query)) ||
+            (c.city && c.city.toLowerCase().includes(query))
+        );
+    }
+
     async renderCharts() {
         if (!window.Chart || !this.chartMarketRef.el) return;
 
@@ -42,30 +55,26 @@ export class CustomerDashboard extends Component {
             data: {
                 labels: this.chartData.market_share.labels,
                 datasets: [{
-                    label: 'Machines',
+                    label: 'Fleet Size',
                     data: this.chartData.market_share.data,
-                    backgroundColor: '#5856d6',
-                    borderRadius: 8,
-                    barThickness: 30,
+                    backgroundColor: '#4F46E5',
+                    borderRadius: 6,
+                    barThickness: 40
                 }]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { beginAtZero: true, grid: { borderDash: [4, 4], drawBorder: false } },
-                    y: { grid: { display: false } }
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
                 },
-                plugins: { legend: { display: false } },
-                onClick: (e) => this.openAllCustomers() // Click chart to see all customers
+                plugins: { legend: { display: false } }
             }
         });
     }
 
-    // 1. Open specific customer form
     openCustomer(id) {
-        if (!id) return;
         this.action.doAction({
             type: 'ir.actions.act_window',
             res_model: 'res.partner',
@@ -75,14 +84,17 @@ export class CustomerDashboard extends Component {
         });
     }
 
-    // 2. Open full list of customers
-    openAllCustomers() {
+    openNewCustomer() {
         this.action.doAction({
             type: 'ir.actions.act_window',
-            name: 'Customers',
             res_model: 'res.partner',
-            views: [[false, 'kanban'], [false, 'list'], [false, 'form']],
-            target: 'current'
+            views: [[false, 'form']],
+            target: 'current',
+            context: {
+                'default_customer_rank': 1,
+                'default_is_company': true,
+                'default_type': 'contact'
+            }
         });
     }
 }
