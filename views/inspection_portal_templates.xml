@@ -151,6 +151,12 @@
     <template id="portal_my_machines">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <div class="d-flex justify-content-end align-items-center mb-3">
+                <t t-call="portal.portal_searchbar">
+                    <t t-set="classes" t-value="'w-100 w-md-50'"/>
+                </t>
+            </div>
             <div class="card border-0 shadow-sm rounded-3 mt-3">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
@@ -300,6 +306,12 @@
     <template id="portal_my_inspections" name="My Inspections">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <div class="d-flex justify-content-end align-items-center mb-3">
+                <t t-call="portal.portal_searchbar">
+                    <t t-set="classes" t-value="'w-100 w-md-50'"/>
+                </t>
+            </div>
             <div class="card border-0 shadow-sm rounded-3 mt-3">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
